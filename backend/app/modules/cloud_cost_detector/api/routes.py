@@ -25,7 +25,8 @@ discovery_service = CloudCostDiscoveryService()
 
 def _handle_aws_error(exc: Exception) -> HTTPException:
     if isinstance(exc, AwsCredentialsError):
-        return HTTPException(status_code=401, detail=sanitize_error_message(str(exc)))
+        # Use 503 (not 401) — the frontend treats 401 as JWT session expiry.
+        return HTTPException(status_code=503, detail=sanitize_error_message(str(exc)))
     if isinstance(exc, AwsApiError):
         message = sanitize_error_message(str(exc))
         lowered = message.lower()

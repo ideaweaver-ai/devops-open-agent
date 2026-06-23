@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DevOps Open Agent — Architecture Diagram</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #0f1117;
+      --text: #e6e8ef;
+      --muted: #9aa3b2;
+      --border: #2a3142;
+      --card: #171b26;
+    }
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg: #f7f8fb;
+        --text: #1a1f2e;
+        --muted: #5c667a;
+        --border: #d8dde8;
+        --card: #ffffff;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+    main {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 32px 24px 64px;
+    }
+    h1 { font-size: 1.75rem; margin: 0 0 8px; }
+    .subtitle { color: var(--muted); margin: 0 0 32px; }
+    section {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+    h2 { font-size: 1.1rem; margin: 0 0 16px; }
+    img {
+      display: block;
+      width: 100%;
+      height: auto;
+      border-radius: 8px;
+    }
+    .note {
+      margin-top: 16px;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+    @media print {
+      body { background: white; color: black; }
+      section { break-inside: avoid; border-color: #ccc; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>DevOps Open Agent — Architecture</h1>
+    <p class="subtitle">
+      Self-hostable platform: Next.js UI, FastAPI backend, four agent modules, shared AI layer,
+      SQLite investigations, PostgreSQL auth, Docker Compose runtime.
+    </p>
+
+    <section>
+      <h2>System context</h2>
+      <img src="diagrams/system-context.svg" alt="System context architecture diagram" />
+      <p class="note">Browser and GitHub connect to Docker Compose services; backend reaches host mounts and external APIs.</p>
+    </section>
+
+    <section>
+      <h2>Application layers</h2>
+      <img src="diagrams/application-layers.svg" alt="Application layers architecture diagram" />
+      <p class="note">Frontend routes to FastAPI; four agent modules share AI and SQLite storage.</p>
+    </section>
+
+    <section>
+      <h2>Downloadable files</h2>
+      <p class="note">
+        PNG/SVG sources live in <code>docs/diagrams/</code>. Canvas source:
+        <code>docs/devops-open-agent-architecture.canvas.tsx</code>.
+        Full Mermaid definitions: <code>docs/ARCHITECTURE.md</code>.
+      </p>
+    </section>
+  </main>
+</body>
+</html>

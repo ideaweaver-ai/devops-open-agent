@@ -1,0 +1,27 @@
+flowchart TB
+    user["User<br/>Browser UI"]
+    frontend["Next.js Frontend<br/>/aws, /cloud-cost, /pr-reviewer"]
+    api["FastAPI /api/v1<br/>REST + JWT auth"]
+    k8s["K8s Agent<br/>clusters, diagnose, topology"]
+    aws["AWS Agent<br/>EC2, VPC, LB, CloudTrail"]
+    cost["Cloud Cost<br/>discovery + savings"]
+    pr["PR Reviewer<br/>webhook + manual review"]
+    pg["PostgreSQL<br/>users + sessions"]
+    ai["Shared AI Layer<br/>context, prompts, RCA"]
+    sqlite["SQLite<br/>investigations, PR reviews"]
+
+    user --> frontend
+    frontend --> api
+    api --> k8s
+    api --> aws
+    api --> cost
+    api --> pr
+    api --> pg
+    k8s --> ai
+    aws --> ai
+    cost --> ai
+    pr --> ai
+    k8s --> sqlite
+    aws --> sqlite
+    cost --> sqlite
+    pr --> sqlite

@@ -1,0 +1,38 @@
+flowchart TB
+    subgraph clients["Clients"]
+        User["Browser / DevOps engineer"]
+        GitHub["GitHub PR webhooks"]
+    end
+
+    subgraph compose["Docker Compose"]
+        FE["frontend — Next.js 15 :3000"]
+        BE["backend — FastAPI :8000"]
+        PG["postgres — auth :5432"]
+        SQLITE[("SQLite volume investigations.db")]
+    end
+
+    subgraph host["Host machine"]
+        KCFG["~/.kube/config"]
+        AWS["~/.aws/credentials"]
+        OLLAMA["Ollama :11434"]
+    end
+
+    subgraph cloud["External services"]
+        K8S["Kubernetes API"]
+        AWSAPI["AWS APIs boto3"]
+        GHAPI["GitHub API"]
+        LLM["LLM providers OpenAI Anthropic OpenRouter Ollama"]
+    end
+
+    User --> FE
+    FE -->|"REST /api/v1 + JWT"| BE
+    GitHub -->|"POST /pr-reviewer/webhook"| BE
+    BE --> PG
+    BE --> SQLITE
+    BE --> KCFG
+    BE --> AWS
+    BE --> OLLAMA
+    BE --> K8S
+    BE --> AWSAPI
+    BE --> GHAPI
+    BE --> LLM

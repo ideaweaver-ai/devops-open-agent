@@ -1,0 +1,41 @@
+flowchart TB
+    subgraph ui["Frontend"]
+        Pages["Pages / /aws /cloud-cost /pr-reviewer"]
+        AuthUI["Login / Signup"]
+        Platform["Agent switcher lib/platform.ts"]
+    end
+
+    subgraph api["FastAPI platform"]
+        Router["API v1 routers main.py"]
+        Auth["auth + db JWT users"]
+        Jobs["InvestigationJobService"]
+        Store["storage SQLite abstraction"]
+        SharedAI["ai LLM factory + RCA pipeline"]
+        Graph["graph topology framework"]
+    end
+
+    subgraph agents["Agent modules"]
+        K8S["kubernetes clusters diagnose topology"]
+        AWS["modules/aws"]
+        COST["modules/cloud_cost_detector"]
+        PR["modules/pr_reviewer"]
+    end
+
+    Pages --> Router
+    AuthUI --> Auth
+    Router --> Auth
+    Router --> K8S
+    Router --> AWS
+    Router --> COST
+    Router --> PR
+    K8S --> SharedAI
+    AWS --> SharedAI
+    COST --> SharedAI
+    PR --> SharedAI
+    K8S --> Store
+    AWS --> Store
+    COST --> Store
+    PR --> Store
+    K8S --> Graph
+    AWS --> Graph
+    Jobs --> Store

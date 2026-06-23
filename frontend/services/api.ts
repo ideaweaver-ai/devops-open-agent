@@ -19,10 +19,39 @@ export function setAuthToken(token: string | null): void {
   }
 }
 
+function isAppAuthFailure(error: {
+  response?: {
+    status?: number;
+    headers?: Record<string, string>;
+    data?: { detail?: unknown };
+  };
+}): boolean {
+  if (error.response?.status !== 401) {
+    return false;
+  }
+
+  const wwwAuth = error.response.headers?.["www-authenticate"];
+  if (typeof wwwAuth === "string" && wwwAuth.toLowerCase().includes("bearer")) {
+    return true;
+  }
+
+  const detail = error.response.data?.detail;
+  if (typeof detail === "string") {
+    const normalized = detail.toLowerCase();
+    return (
+      normalized.includes("authentication required") ||
+      normalized.includes("invalid or expired token") ||
+      normalized.includes("user not found")
+    );
+  }
+
+  return false;
+}
+
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401 && typeof window !== "undefined") {
+    if (isAppAuthFailure(error) && typeof window !== "undefined") {
       const path = window.location.pathname;
       if (!path.startsWith("/login") && !path.startsWith("/signup")) {
         window.localStorage.removeItem("kda_auth_token");

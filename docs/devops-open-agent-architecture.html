@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DevOps Open Agent — Application Request Flow</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --card: #171b26;
+      --text: #e6e8ef;
+      --muted: #9aa3b2;
+      --border: #2a3142;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+    main {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 32px 24px 64px;
+    }
+    h1 { font-size: 1.75rem; margin: 0 0 8px; }
+    .subtitle { color: var(--muted); margin: 0 0 24px; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .card-header {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--muted);
+    }
+    .card-body {
+      padding: 24px;
+      display: flex;
+      justify-content: center;
+      overflow-x: auto;
+    }
+    img, object {
+      width: 100%;
+      max-width: 1000px;
+      height: auto;
+      display: block;
+    }
+    @media print {
+      body { background: white; color: black; }
+      .card { break-inside: avoid; border-color: #ccc; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>DevOps Open Agent</h1>
+    <p class="subtitle">Application request flow — browser to agents, shared AI layer, and data stores.</p>
+
+    <section class="card">
+      <div class="card-header">Application request flow</div>
+      <div class="card-body">
+        <img
+          src="diagrams/application-request-flow.svg"
+          alt="Application request flow architecture diagram"
+        />
+      </div>
+    </section>
+  </main>
+</body>
+</html>

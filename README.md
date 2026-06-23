@@ -19,6 +19,14 @@
 
 Supported LLM providers: OpenAI, Anthropic, OpenRouter, Ollama
 
+## Architecture
+
+Application request flow: the browser talks to the Next.js frontend, which calls the FastAPI backend. The API routes requests to agent modules (Kubernetes, AWS, Cloud Cost, PR Reviewer), each using a shared AI layer and persisting results to SQLite or PostgreSQL.
+
+![Application request flow](img/application-request-flow.png)
+
+For full platform diagrams and module internals, see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
 ## Prerequisites
 
 - macOS or Linux
