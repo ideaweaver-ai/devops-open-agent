@@ -33,17 +33,121 @@ For full platform diagrams and module internals, see [docs/ARCHITECTURE.md](docs
 
 ## Product Tour
 
-Walk through all four agent modules with screenshots and short descriptions:
+Screenshots from the platform across all four agent modules.
 
-**[Download Product Tour PDF](docs/devops-open-agent-product-tour.pdf)**
+### 1. DevOps Open Agent
 
-The PDF includes a cover page plus 14 numbered screenshots: Kubernetes debugging and topology, AWS investigations and topology, Cloud Cost analysis, and GitHub PR review.
+Platform home for the Kubernetes Debugging Agent. Select a cluster, check system readiness, and start an investigation.
 
-To regenerate locally:
+<p align="center">
+  <img src="img/product-tour/01-devops-open-agent.png" alt="DevOps Open Agent dashboard" width="100%" />
+</p>
 
-```bash
-python3 scripts/build_screenshots_pdf.py
-```
+### 2. Kubernetes Investigation
+
+Live investigation progress across discovery, pods, logs, events, deployments, networking, topology, and AI diagnosis.
+
+<p align="center">
+  <img src="img/product-tour/02-kubernetes-investigation.png" alt="Kubernetes investigation progress" width="100%" />
+</p>
+
+### 3. Kubernetes AI Diagnosis
+
+AI root cause analysis with confidence score, evidence, and a clear summary of the issue.
+
+<p align="center">
+  <img src="img/product-tour/03-kubernetes-ai-diagnosis.png" alt="Kubernetes AI diagnosis" width="100%" />
+</p>
+
+### 4. Recent Investigation History
+
+Unified history showing root cause, agent, cluster, status, confidence, and timestamps.
+
+<p align="center">
+  <img src="img/product-tour/04-recent-investigation-history.png" alt="Recent investigation history" width="100%" />
+</p>
+
+### 5. Kubernetes Cluster Topology
+
+Namespace-grouped resource map of services, deployments, replica sets, and pods.
+
+<p align="center">
+  <img src="img/product-tour/05-kubernetes-cluster-topology.png" alt="Kubernetes cluster topology" width="100%" />
+</p>
+
+### 6. AWS DevOps Agent
+
+Choose AWS account, region, and troubleshooting category such as full scan, security, EC2, or network.
+
+<p align="center">
+  <img src="img/product-tour/06-aws-devops-agent.png" alt="AWS DevOps Agent" width="100%" />
+</p>
+
+### 7. AWS Investigation
+
+AWS investigation pipeline covering EC2, network, security groups, load balancers, and observability.
+
+<p align="center">
+  <img src="img/product-tour/07-aws-investigation.png" alt="AWS investigation progress" width="100%" />
+</p>
+
+### 8. AWS Investigation History
+
+AWS investigation history with account, region, status, confidence, and root cause summaries.
+
+<p align="center">
+  <img src="img/product-tour/08-aws-investigation-history.png" alt="AWS investigation history" width="100%" />
+</p>
+
+### 9. AWS AI Analysis
+
+AI diagnosis for exposed security groups, stopped instances, and suggested fixes with CLI examples.
+
+<p align="center">
+  <img src="img/product-tour/09-aws-ai-analysis.png" alt="AWS AI analysis" width="100%" />
+</p>
+
+### 10. AWS Topology
+
+Interactive AWS topology map for VPCs, subnets, EC2, EBS, security groups, and gateways.
+
+<p align="center">
+  <img src="img/product-tour/10-aws-topology.png" alt="AWS topology map" width="100%" />
+</p>
+
+### 11. Cloud Cost Detector
+
+Multi-step AWS cost optimization workflow from discovery through AI cost analysis.
+
+<p align="center">
+  <img src="img/product-tour/11-cloud-cost-detector.png" alt="Cloud Cost Detector" width="100%" />
+</p>
+
+### 12. Cloud Investigation Details
+
+Savings estimates, Cost Explorer context, AI optimization report, and prioritized findings.
+
+<p align="center">
+  <img src="img/product-tour/12-cloud-investigation-details.png" alt="Cloud investigation details" width="100%" />
+</p>
+
+### 13. GitHub PR Reviewer
+
+Configure GitHub webhooks and tokens, or trigger a manual DevOps PR review.
+
+<p align="center">
+  <img src="img/product-tour/13-github-pr-reviewer.png" alt="GitHub PR Reviewer" width="100%" />
+</p>
+
+### 14. PR Review AI Analysis
+
+Completed AI DevOps PR review with risk rating and structured security and reliability findings.
+
+<p align="center">
+  <img src="img/product-tour/14-pr-review-ai-analysis.png" alt="PR review AI analysis" width="100%" />
+</p>
+
+You can also [download the product tour as a PDF](docs/devops-open-agent-product-tour.pdf).
 
 ## Prerequisites
 
