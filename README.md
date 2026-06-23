@@ -82,9 +82,128 @@ curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stabl
 
 > **Note:** The Kind and kubectl commands above target `linux/amd64`. On ARM64 Ubuntu, replace `amd64` with `arm64` in the download URLs.
 
+## New host checklist
+
+Use this flow when provisioning a **fresh Linux or EC2 host**. For local development on your laptop, see [Quick Install](#quick-install) instead.
+
+Nothing in the repository is tied to a specific IP, AWS account, or personal credentials. You configure those per host.
+
+### 1. Clone and enter the project
+
+```bash
+git clone https://github.com/ideaweaver-ai/devops-open-agent.git
+cd devops-open-agent
+```
+
+### 2. Set public URLs (required for remote access)
+
+Create `.env` in the **project root** (next to `docker-compose.yml`), not in `backend/`:
+
+```bash
+cp .env.compose.example .env
+```
+
+Edit with your public IP or domain:
+
+```env
+PUBLIC_API_BASE_URL=http://<YOUR_IP_OR_DOMAIN>:8000
+PUBLIC_APP_URL=http://<YOUR_IP_OR_DOMAIN>:3000
+```
+
+Open security group / firewall ports **3000** (UI) and **8000** (API) for your client IP.
+
+### 3. Configure backend secrets
+
+```bash
+cp backend/.env.example backend/.env
+```
+
+Set at minimum:
+
+```env
+JWT_SECRET=<random-secret>
+DEFAULT_ADMIN_PASSWORD=<your-secure-password>
+AWS_DEFAULT_REGION=<your-region>
+LLM_PROVIDER=ollama
+OLLAMA_BASE_URL=http://host.docker.internal:11434
+OLLAMA_MODEL=gemma4:e4b
+```
+
+Important:
+
+- **Do not** add a blank `AWS_PROFILE=` line — omit it entirely or set a real profile name.
+- **Do not** set `KUBECONFIG_PATH=/root/.kube/config` — Docker mounts kubeconfig at `/home/kube/.kube/config` inside the container.
+- Add `GITHUB_TOKEN` only if using PR Reviewer.
+
+### 4. Configure AWS on the host
+
+```bash
+aws configure
+```
+
+Credentials are mounted into the container at `/root/.aws/`. Verify after install:
+
+```bash
+docker compose exec backend python -c "import boto3; print(boto3.client('sts').get_caller_identity())"
+```
+
+Alternatively, attach an **IAM instance role** to the EC2 instance and skip `aws configure`.
+
+### 5. Install and start
+
+```bash
+chmod +x install.sh
+./install.sh --admin-pass '<your-secure-password>'
+```
+
+Or manually:
+
+```bash
+docker compose up -d --build
+```
+
+### 6. Verify the deployment
+
+```bash
+docker compose ps
+docker compose exec frontend printenv NEXT_PUBLIC_API_BASE_URL
+curl -s http://127.0.0.1:8000/health
+```
+
+Sign in at `http://<YOUR_IP_OR_DOMAIN>:3000/login` with username **`admin`**.
+
+### 7. Optional — Kubernetes (Kind)
+
+```bash
+kind create cluster --name devops-agent --config deploy/kind-devops-agent.yaml
+kubectl config use-context kind-devops-agent
+docker compose up -d --force-recreate backend
+docker compose exec backend kubectl --kubeconfig data/kubeconfig.docker.yaml get nodes
+```
+
+See [Kubernetes on Docker / AWS](#kubernetes-on-docker--aws) if cluster checks fail.
+
+### Per-host configuration reference
+
+| Item | Where | Notes |
+|------|--------|--------|
+| Public URLs | Root `.env` | `PUBLIC_API_BASE_URL`, `PUBLIC_APP_URL` |
+| Secrets / LLM / AWS region | `backend/.env` | Never commit this file |
+| AWS credentials | Host `~/.aws/` or IAM role | Mounted read-only into backend |
+| Kubeconfig | Host `~/.kube/` | Mounted at `/home/kube/.kube/` in container |
+| Admin login | Seeded on first start | Default username `admin` |
+
+### Troubleshooting on a new host
+
+| Issue | Section |
+|-------|---------|
+| Login fails from browser | [Remote / AWS deployment](#remote--aws-deployment) |
+| `config profile () could not be found` | [AWS on EC2 / Docker](#aws-on-ec2--docker) |
+| Kubernetes cluster missing in UI | [Kubernetes on Docker / AWS](#kubernetes-on-docker--aws) |
+
 ## Quick Install
 
-From the project root:
+For **local development** (localhost). On a new remote host, use [New host checklist](#new-host-checklist) instead.
 
 ```bash
 chmod +x install.sh
@@ -179,7 +298,9 @@ Use a tunnel (ngrok, Cloudflare Tunnel) for public GitHub delivery.
 
 ## Remote / AWS deployment
 
-When hosting on EC2 or another remote server, the browser must call the **public backend URL**, not `localhost`.
+If you followed the [New host checklist](#new-host-checklist), most of this is already done. Use this section when login or API calls fail from a remote browser.
+
+The browser must call the **public backend URL**, not `localhost`.
 
 **Symptom:** Login shows *"Unable to sign in. Please try again."* and:
 
@@ -188,17 +309,17 @@ docker compose exec frontend printenv NEXT_PUBLIC_API_BASE_URL
 # http://localhost:8000   ← wrong for remote browsers
 ```
 
-**Fix:** Create a `.env` file in the project root (next to `docker-compose.yml`):
+**Fix:** Ensure root `.env` exists (see [New host checklist](#new-host-checklist)):
 
 ```bash
 cp .env.compose.example .env
 ```
 
-Edit `.env` with your public IP or domain:
+Edit with your public IP or domain:
 
 ```env
-PUBLIC_API_BASE_URL=http://54.202.118.240:8000
-PUBLIC_APP_URL=http://54.202.118.240:3000
+PUBLIC_API_BASE_URL=http://<YOUR_IP_OR_DOMAIN>:8000
+PUBLIC_APP_URL=http://<YOUR_IP_OR_DOMAIN>:3000
 ```
 
 Rebuild and restart (frontend bakes in the API URL at build time):
@@ -319,7 +440,7 @@ Docker injects that as a blank profile name. **Remove that line** from `backend/
 ```bash
 aws configure   # on the EC2 host
 docker compose exec backend ls -la /root/.aws/
-docker compose exec backend aws sts get-caller-identity
+docker compose exec backend python -c "import boto3; print(boto3.client('sts').get_caller_identity())"
 ```
 
 Then restart:
