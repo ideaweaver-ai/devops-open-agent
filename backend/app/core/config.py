@@ -1,7 +1,12 @@
 from functools import lru_cache
 
-from pydantic import field_validator
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+_DEFAULT_CORS_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+]
 
 
 class Settings(BaseSettings):
@@ -47,17 +52,7 @@ class Settings(BaseSettings):
     topology_graph_enabled: bool = False
     memory_enabled: bool = False
 
-    cors_origins: list[str] = [
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-    ]
-
-    @field_validator("cors_origins", mode="before")
-    @classmethod
-    def parse_cors_origins(cls, value: object) -> object:
-        if isinstance(value, str):
-            return [item.strip() for item in value.split(",") if item.strip()]
-        return value
+    cors_origins_raw: str = Field(default="", validation_alias="CORS_ORIGINS")
 
     database_path: str = "data/investigations.db"
 
@@ -76,6 +71,17 @@ class Settings(BaseSettings):
     github_app_id: str = ""
     github_private_key: str = ""
     github_installation_id: str = ""
+
+    @property
+    def cors_origins(self) -> list[str]:
+        if not self.cors_origins_raw.strip():
+            return list(_DEFAULT_CORS_ORIGINS)
+        parsed = [
+            item.strip()
+            for item in self.cors_origins_raw.split(",")
+            if item.strip()
+        ]
+        return parsed or list(_DEFAULT_CORS_ORIGINS)
 
 
 @lru_cache
