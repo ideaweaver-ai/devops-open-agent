@@ -31,6 +31,20 @@ Application request flow: the browser talks to the Next.js frontend, which calls
 
 For full platform diagrams and module internals, see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
+## Product Tour
+
+Walk through all four agent modules with screenshots and short descriptions:
+
+**[Download Product Tour PDF](docs/devops-open-agent-product-tour.pdf)**
+
+The PDF includes a cover page plus 14 numbered screenshots: Kubernetes debugging and topology, AWS investigations and topology, Cloud Cost analysis, and GitHub PR review.
+
+To regenerate locally:
+
+```bash
+python3 scripts/build_screenshots_pdf.py
+```
+
 ## Prerequisites
 
 - macOS or Linux
