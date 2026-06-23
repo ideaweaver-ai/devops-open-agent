@@ -26,14 +26,18 @@ def get_api_host_rewrite(explicit_rewrite: str = "") -> str:
 
 
 def get_source_kubeconfig_path(configured_path: str = "") -> str | None:
-    if configured_path:
+    if configured_path and Path(configured_path).exists():
         return configured_path
     env_path = os.environ.get("KUBECONFIG", "").strip()
     if env_path:
-        return env_path.split(os.pathsep)[0]
+        first_path = env_path.split(os.pathsep)[0]
+        if Path(first_path).exists():
+            return first_path
     default_path = Path.home() / ".kube" / "config"
     if default_path.exists():
         return str(default_path)
+    if configured_path:
+        return configured_path
     return None
 
 

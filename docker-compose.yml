@@ -32,6 +32,7 @@ services:
       LLM_TIMEOUT: "180"
       LOG_LEVEL: INFO
       KUBECONFIG: /home/kube/.kube/config
+      KUBECONFIG_PATH: /home/kube/.kube/config
       KUBE_API_HOST_REWRITE: host.docker.internal
       OLLAMA_BASE_URL: http://host.docker.internal:11434
       DATABASE_PATH: data/investigations.db

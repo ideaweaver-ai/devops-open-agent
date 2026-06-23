@@ -225,6 +225,52 @@ curl -s -X POST http://127.0.0.1:8000/api/v1/auth/login \
   -d '{"email":"admin","password":"admin123"}'
 ```
 
+## Kubernetes on Docker / AWS
+
+**Do not set** `KUBECONFIG_PATH=/root/.kube/config` in `backend/.env` when using Docker Compose.
+
+| Location | Path |
+|----------|------|
+| On the EC2 host (as root) | `/root/.kube/config` |
+| Inside the backend container | `/home/kube/.kube/config` |
+
+Docker Compose mounts `${HOME}/.kube` → `/home/kube/.kube` and sets `KUBECONFIG` automatically. If you set `KUBECONFIG_PATH` to a host path, the backend container cannot read it.
+
+**Setup on Ubuntu EC2 with Kind:**
+
+```bash
+# Create a cluster (after installing kind from README)
+kind create cluster --name devops-agent
+
+# Ensure a current context is set
+kubectl config get-contexts
+kubectl config use-context kind-devops-agent
+
+# Verify on the host
+kubectl get nodes
+```
+
+**Verify inside the backend container:**
+
+```bash
+docker compose exec backend ls -la /home/kube/.kube/config
+docker compose exec backend kubectl config current-context
+docker compose exec backend kubectl get nodes
+```
+
+If you see `error: current-context is not set`, fix the kubeconfig on the **host**:
+
+```bash
+kubectl config use-context kind-devops-agent
+docker compose up -d --force-recreate backend
+```
+
+Remove any wrong path from `backend/.env`:
+
+```env
+KUBECONFIG_PATH=
+```
+
 ## Project Structure
 
 ```text
