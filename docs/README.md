@@ -18,7 +18,8 @@
 | [diagrams/application-request-flow.png](./diagrams/application-request-flow.png) | PNG | Application request flow |
 | [../img/aws-services-diagram.png](../img/aws-services-diagram.png) | PNG | AWS DevOps Agent → supported services |
 | [../img/aws-services-diagram.svg](../img/aws-services-diagram.svg) | SVG | AWS services architecture (vector) |
-| [../img/llm-provider-diagram.png](../img/llm-provider-diagram.png) | PNG | Shared LLM provider architecture |
+| [../img/llm-provider-diagram.png](../img/llm-provider-diagram.png) | PNG | Shared LLM provider architecture (Ollama, OpenAI, Anthropic, OpenRouter) |
+| [../img/llm-provider-diagram.svg](../img/llm-provider-diagram.svg) | SVG | LLM provider architecture (vector) |
 | [../img/slack-flow-diagram.png](../img/slack-flow-diagram.png) | PNG | Platform → agents → AI analysis → Slack |
 | [../img/slack-flow-diagram.svg](../img/slack-flow-diagram.svg) | SVG | Slack notification flow (vector) |
 

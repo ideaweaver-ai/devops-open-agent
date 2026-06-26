@@ -48,7 +48,7 @@ Supported LLM providers: OpenAI, Anthropic, OpenRouter, Ollama — see [LLM Supp
 All four agent modules (Kubernetes, AWS, Cloud Cost, PR Reviewer) use a **shared LLM layer**.  
 Configure one provider in `backend/.env` — every investigation, diagnosis, and PR review uses it.
 
-![LLM provider architecture — DevOps Open Agent to Ollama, OpenAI, and Anthropic](img/llm-provider-diagram.png)
+![LLM provider architecture — DevOps Open Agent to Ollama, OpenAI, Anthropic, and OpenRouter](img/llm-provider-diagram.png)
 
 | Provider | `LLM_PROVIDER` | Configure in `backend/.env` |
 |----------|--------------|-------------------------------|
@@ -60,9 +60,15 @@ Configure one provider in `backend/.env` — every investigation, diagnosis, and
 Example (`backend/.env`):
 
 ```env
+# Anthropic
 LLM_PROVIDER=anthropic
 ANTHROPIC_API_KEY=sk-ant-...
 ANTHROPIC_MODEL=claude-sonnet-4-6
+
+# OpenRouter (100+ models through one API key)
+# LLM_PROVIDER=openrouter
+# OPENROUTER_API_KEY=sk-or-...
+# OPENROUTER_MODEL=openai/gpt-4o-mini
 ```
 
 After changing provider settings, restart the backend:
