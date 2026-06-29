@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1200" height="560" viewBox="0 0 1200 560">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0B1220"/><stop offset="100%" stop-color="#111827"/>
+    </linearGradient>
+    <filter id="shadow"><feDropShadow dx="0" dy="4" stdDeviation="8" flood-opacity="0.35"/></filter>
+    <marker id="arrowBlue" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#38BDF8"/></marker>
+    <marker id="arrowGreen" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#06AC38"/></marker>
+    <marker id="arrowSlack" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#4A154B"/></marker>
+  </defs>
+  <rect width="1200" height="560" rx="24" fill="url(#bg)"/>
+  <text x="600" y="42" text-anchor="middle" fill="#F8FAFC" font-family="system-ui,sans-serif" font-size="24" font-weight="700">DevOps Open Agent — Enterprise Integrations</text>
+  <text x="600" y="68" text-anchor="middle" fill="#94A3B8" font-family="system-ui,sans-serif" font-size="14">AI recommendations delivered to PagerDuty incidents and Slack channels</text>
+
+  <g filter="url(#shadow)">
+    <rect x="60" y="155.0" width="210" height="250" rx="28" fill="#171B26" stroke="#334155" stroke-width="2"/>
+    <image x="115" y="185.0" width="110" height="110" xlink:href="devops-open-agent-icon.png"/>
+    <text x="165.0" y="323.0" text-anchor="middle" fill="#F8FAFC" font-family="system-ui,sans-serif" font-size="16" font-weight="700">DevOps Open Agent</text>
+    <text x="165.0" y="305.0" text-anchor="middle" fill="#94A3B8" font-family="system-ui,sans-serif" font-size="11">Open Source Platform</text>
+  </g>
+
+  <line x1="270" y1="280" x2="422" y2="280.0" stroke="#38BDF8" stroke-width="3" marker-end="url(#arrowBlue)"/>
+
+  <g filter="url(#shadow)">
+    <rect x="430" y="190.0" width="220" height="180" rx="22" fill="#1E293B" stroke="#38BDF8" stroke-width="2"/>
+    <circle cx="540.0" cy="308.0" r="26" fill="#38BDF8"/>
+    <line x1="528.0" y1="308.0" x2="552.0" y2="308.0" stroke="#0B1220" stroke-width="3"/>
+    <line x1="540.0" y1="296.0" x2="540.0" y2="320.0" stroke="#0B1220" stroke-width="3"/>
+    <text x="540.0" y="262.0" text-anchor="middle" fill="#F8FAFC" font-family="system-ui,sans-serif" font-size="22" font-weight="700">Integrations</text>
+    <text x="540.0" y="242.0" text-anchor="middle" fill="#94A3B8" font-family="system-ui,sans-serif" font-size="11">PagerDuty · Slack</text>
+  </g>
+
+  <line x1="655" y1="322.0" x2="852" y2="390.0" stroke="#06AC38" stroke-width="3" marker-end="url(#arrowGreen)"/>
+  <line x1="655" y1="238.0" x2="852" y2="170.0" stroke="#4A154B" stroke-width="3" marker-end="url(#arrowSlack)"/>
+
+  <g filter="url(#shadow)">
+    <rect x="860" y="315" width="180" height="150" rx="22" fill="#1E293B" stroke="#06AC38" stroke-width="2"/>
+    <circle cx="950.0" cy="408.0" r="28" fill="#06AC38"/>
+    <text x="950.0" y="414.0" text-anchor="middle" fill="#F8FAFC" font-family="system-ui,sans-serif" font-size="18" font-weight="700">PD</text>
+    <text x="950.0" y="357" text-anchor="middle" fill="#F8FAFC" font-family="system-ui,sans-serif" font-size="22" font-weight="700">PagerDuty</text>
+    <text x="950.0" y="339" text-anchor="middle" fill="#94A3B8" font-family="system-ui,sans-serif" font-size="10">Incidents · On-call</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="860" y="95" width="180" height="150" rx="22" fill="#1E293B" stroke="#4A154B" stroke-width="2"/>
+    <rect x="922.0" y="160.0" width="56" height="56" rx="14" fill="#4A154B"/>
+    <text x="950.0" y="184.0" text-anchor="middle" fill="#F8FAFC" font-family="system-ui,sans-serif" font-size="26" font-weight="700">#</text>
+    <text x="950.0" y="137" text-anchor="middle" fill="#F8FAFC" font-family="system-ui,sans-serif" font-size="22" font-weight="700">Slack</text>
+    <text x="950.0" y="119" text-anchor="middle" fill="#94A3B8" font-family="system-ui,sans-serif" font-size="10">Team alerts · Webhooks</text>
+  </g>
+
+  <text x="600" y="542" text-anchor="middle" fill="#64748B" font-family="system-ui,sans-serif" font-size="12">Per-user routing keys · Configurable cooldown · Agent-level toggles · Integrations tab in UI</text>
+</svg>

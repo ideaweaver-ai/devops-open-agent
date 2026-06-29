@@ -79,9 +79,17 @@ class Settings(BaseSettings):
         default=60,
         description="Minimum minutes between Slack alerts per user (reduces alert fatigue)",
     )
+
+    # PagerDuty notifications (optional instance-level defaults)
+    pagerduty_instance_routing_key: str = ""
+    pagerduty_notification_cooldown_minutes: int = Field(
+        default=60,
+        description="Minimum minutes between PagerDuty alerts per user (reduces alert fatigue)",
+    )
+
     public_app_url: str = Field(
         default="http://localhost:3000",
-        description="Public frontend URL for links in Slack messages",
+        description="Public frontend URL for links in notification messages",
     )
 
     @property

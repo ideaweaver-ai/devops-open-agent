@@ -11,6 +11,7 @@ from app.modules.aws.investigation_service import AWSInvestigationService
 from app.modules.aws.models import AwsInvestigationRequest, AwsInvestigationResponse
 from app.modules.cloud_cost_detector.services.investigation_service import CloudCostInvestigationService
 from app.modules.cloud_cost_detector.models.schemas import CloudCostInvestigationResponse
+from app.notifications.pagerduty_notification_service import pagerduty_notification_service
 from app.notifications.slack_notification_service import slack_notification_service
 from app.services.diagnosis_service import DiagnosisService
 from app.services.investigation_service import InvestigationService
@@ -107,7 +108,7 @@ class InvestigationJobService:
                     root_cause=diagnosis.root_cause,
                     confidence=diagnosis.confidence_score,
                 )
-                await self._notify_slack(
+                await self._notify_integrations(
                     investigation_id,
                     agent_type="kubernetes",
                     scope_label=request.cluster_id or "unknown",
@@ -182,7 +183,7 @@ class InvestigationJobService:
                 confidence=diagnosis.confidence_score if diagnosis else None,
             )
             if diagnosis:
-                await self._notify_slack(
+                await self._notify_integrations(
                     investigation_id,
                     agent_type="aws",
                     scope_label=f"{request.account_id}/{request.region}",
@@ -233,7 +234,7 @@ class InvestigationJobService:
                 confidence=diagnosis.confidence_score if diagnosis else None,
             )
             if diagnosis:
-                await self._notify_slack(
+                await self._notify_integrations(
                     investigation_id,
                     agent_type="cloud_cost",
                     scope_label=f"{request.account_id}/{request.region}",
@@ -284,7 +285,7 @@ class InvestigationJobService:
     def parse_result(record: dict) -> InvestigationResponse | None:
         return InvestigationJobService.parse_kubernetes_result(record)
 
-    async def _notify_slack(
+    async def _notify_integrations(
         self,
         investigation_id: str,
         agent_type: str,
@@ -294,6 +295,13 @@ class InvestigationJobService:
         record = await self.store.get_status(investigation_id)
         user_id = record.get("user_id") if record else None
         slack_notification_service.schedule_investigation_notification(
+            investigation_id=investigation_id,
+            agent_type=agent_type,
+            scope_label=scope_label,
+            diagnosis=diagnosis,
+            user_id=user_id,
+        )
+        pagerduty_notification_service.schedule_investigation_notification(
             investigation_id=investigation_id,
             agent_type=agent_type,
             scope_label=scope_label,

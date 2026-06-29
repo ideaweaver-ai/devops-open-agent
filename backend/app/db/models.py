@@ -58,6 +58,38 @@ class SlackNotificationCooldown(Base):
     last_sent_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
+class UserPagerDutyIntegration(Base):
+    __tablename__ = "user_pagerduty_integrations"
+
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    routing_key: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    notification_cooldown_minutes: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=60
+    )
+    notify_kubernetes: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    notify_aws: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    notify_cloud_cost: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    notify_pr_reviewer: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+
+class PagerDutyNotificationCooldown(Base):
+    __tablename__ = "pagerduty_notification_cooldowns"
+
+    scope_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    last_sent_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
 class InvestigationSchedule(Base):
     __tablename__ = "investigation_schedules"
 

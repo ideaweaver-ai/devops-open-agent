@@ -27,10 +27,20 @@ async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
 
 
 async def init_auth_db() -> None:
+    from sqlalchemy import text
+
     from app.db import models  # noqa: F401
 
     async with engine.begin() as connection:
         await connection.run_sync(Base.metadata.create_all)
+        await connection.execute(
+            text(
+                """
+                ALTER TABLE user_pagerduty_integrations
+                ADD COLUMN IF NOT EXISTS notification_cooldown_minutes INTEGER NOT NULL DEFAULT 60
+                """
+            )
+        )
 
 
 async def check_auth_db() -> bool:
