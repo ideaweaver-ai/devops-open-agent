@@ -52,8 +52,6 @@ Configure one provider in `backend/.env` — every investigation, diagnosis, and
 
 ![LLM provider architecture — DevOps Open Agent to Ollama, OpenAI, Anthropic, OpenRouter, and Google Gemini](img/llm-provider-diagram.png?v=gemini)
 
-Regenerate the diagram: `python3 scripts/build_llm_diagram.py`
-
 | Provider | `LLM_PROVIDER` | Configure in `backend/.env` |
 |----------|--------------|-------------------------------|
 | **Ollama** | `ollama` | `OLLAMA_BASE_URL`, `OLLAMA_MODEL` — local / self-hosted |
