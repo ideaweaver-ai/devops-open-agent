@@ -11,6 +11,7 @@ from app.modules.pr_reviewer.github.github_client import GitHubClient, GitHubCli
 from app.modules.pr_reviewer.models.schemas import PrWebhookPayload
 from app.notifications.pagerduty_notification_service import pagerduty_notification_service
 from app.notifications.slack_notification_service import slack_notification_service
+from app.notifications.teams_notification_service import teams_notification_service
 from app.storage.factory import get_pr_review_store
 from app.storage.pr_review_store import PrReviewStore
 
@@ -169,6 +170,17 @@ class PrReviewService:
                 user_id=(review_record or {}).get("user_id"),
             )
             pagerduty_notification_service.schedule_pr_review_notification(
+                review_id=review_id,
+                owner=owner,
+                repository=repo,
+                pull_request_number=pull_request_number,
+                pull_request_title=pr.pull_request_title,
+                overall_risk=analysis.overall_risk,
+                final_recommendation=analysis.final_recommendation,
+                findings_count=len(analysis.findings),
+                user_id=(review_record or {}).get("user_id"),
+            )
+            teams_notification_service.schedule_pr_review_notification(
                 review_id=review_id,
                 owner=owner,
                 repository=repo,

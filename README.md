@@ -4,7 +4,7 @@
 
 # DevOps Open Agent
 
-**DevOps Open Agent** is an open-source, self-hostable, AI-powered DevOps troubleshooting platform. It helps DevOps engineers, SREs, and platform teams investigate infrastructure issues, optimize cloud costs, and review pull requests with DevOps-focused AI guidance — reactively on demand or **proactively on a schedule** — then deliver recommendations to **Slack** and **PagerDuty** without alert fatigue.
+**DevOps Open Agent** is an open-source, self-hostable, AI-powered DevOps troubleshooting platform. It helps DevOps engineers, SREs, and platform teams investigate infrastructure issues, optimize cloud costs, and review pull requests with DevOps-focused AI guidance — reactively on demand or **proactively on a schedule** — then deliver recommendations to **Slack**, **Microsoft Teams**, and **PagerDuty** without alert fatigue.
 
 ## Modules
 
@@ -14,11 +14,11 @@
 | **AWS DevOps Agent** | Troubleshoot AWS infrastructure — EC2, **Lambda**, **S3**, VPC, load balancers, CloudWatch, and more |
 | **Cloud Cost Detector** | Find unused and underutilized AWS resources |
 | **PR Reviewer** | AI DevOps review for GitHub pull requests |
-| **Integrations** | **Slack**, **PagerDuty**, and **MCP** — notifications, on-call incidents, and external tool servers |
+| **Integrations** | **Slack**, **Microsoft Teams**, **PagerDuty**, and **MCP** — notifications, on-call incidents, and external tool servers |
 
 ## Demo Video
 
-Watch a full walkthrough of DevOps Open Agent — how the platform works across all four agents, AI root cause analysis, and Slack / PagerDuty integrations.
+Watch a full walkthrough of DevOps Open Agent — how the platform works across all four agents, AI root cause analysis, and Slack, Microsoft Teams, and PagerDuty integrations.
 
 <p align="center">
   <a href="https://youtu.be/3VT8MeSLt5s">
@@ -33,7 +33,7 @@ The demo covers:
 1. **Platform overview** — one UI for Kubernetes, AWS, cloud cost, and PR review workflows  
 2. **Live investigations** — discovery, evidence collection, topology, and progress tracking  
 3. **AI diagnosis** — root cause, suggested fixes, confidence scores, and validation steps  
-4. **Integrations** — Slack notifications and PagerDuty incidents from AI recommendations  
+4. **Integrations** — Slack, Microsoft Teams, and PagerDuty notifications from AI recommendations  
 5. **Proactive schedules** — recurring Kubernetes investigations with AI diagnosis  
 6. **Self-hosted setup** — running locally with Docker Compose and your choice of LLM provider  
 
@@ -89,17 +89,18 @@ docker compose up -d --force-recreate backend
 
 Deliver AI recommendations from investigations and PR reviews to the tools your team already uses — and enrich AI analysis with external MCP servers. Configure everything under **Integrations** in the UI.
 
-![DevOps Open Agent — Integrations to PagerDuty and Slack](img/integrations-diagram.png)
+![DevOps Open Agent — Integrations to PagerDuty, Microsoft Teams, and Slack](img/integrations-diagram.png)
 
 Regenerate the diagram: `python3 scripts/build_integrations_diagram.py`
 
 | Integration | UI path | Best for |
 |-------------|---------|----------|
 | **Slack** | Integrations → Slack | Team chat alerts, webhooks, channel delivery |
+| **Microsoft Teams** | Integrations → Teams | Team chat alerts via incoming webhook |
 | **PagerDuty** | Integrations → PagerDuty | On-call incidents, Events API v2, enterprise alerting |
 | **MCP** | Integrations → MCP | External tools & resources via Model Context Protocol |
 
-Slack and PagerDuty support:
+Slack, Microsoft Teams, and PagerDuty support:
 
 - Per-user settings stored in PostgreSQL
 - Per-agent toggles (Kubernetes, AWS, Cloud Cost, PR Reviewer)
@@ -156,6 +157,50 @@ Set to `0` to disable the cooldown (not recommended for proactive schedules).
 | `GET` | `/api/v1/integrations/slack` |
 | `PUT` | `/api/v1/integrations/slack` |
 | `POST` | `/api/v1/integrations/slack/test` |
+
+### Microsoft Teams
+
+Post AI recommendations to a Teams channel using an incoming webhook — the same simple flow as Slack webhooks.
+
+Configure per-user settings under **Integrations → Microsoft Teams** in the UI, or set an instance webhook in `backend/.env`:
+
+```env
+TEAMS_INSTANCE_WEBHOOK_URL=https://outlook.office.com/webhook/...
+TEAMS_NOTIFICATION_COOLDOWN_MINUTES=60
+PUBLIC_APP_URL=http://localhost:3000
+```
+
+**What gets posted to Teams**
+
+- Root cause, summary, suggested fix, and validation steps from AI investigations (Kubernetes, AWS, Cloud Cost)
+- Final recommendation and risk summary from PR reviews
+- Per-user webhook under **Integrations → Microsoft Teams** in the UI
+- Optional per-agent toggles (enable/disable notifications per module)
+
+**Setup**
+
+| Method | Configure |
+|--------|-----------|
+| **Incoming webhook** | Paste webhook URL in **Integrations → Microsoft Teams** (simplest) |
+| **Instance default** | Set `TEAMS_INSTANCE_WEBHOOK_URL` in `backend/.env` (fallback for webhooks) |
+
+In Teams: open your channel → **Connectors** → **Incoming Webhook**, or use a Power Automate workflow webhook URL.
+
+**Alert fatigue protection**
+
+Teams notifications use the same cooldown pattern as Slack — **one alert per hour per user** by default. Adjust in `backend/.env`:
+
+```env
+TEAMS_NOTIFICATION_COOLDOWN_MINUTES=60
+```
+
+**API** (authenticated):
+
+| Method | Endpoint |
+|--------|----------|
+| `GET` | `/api/v1/integrations/teams` |
+| `PUT` | `/api/v1/integrations/teams` |
+| `POST` | `/api/v1/integrations/teams/test` |
 
 ### PagerDuty
 
@@ -295,7 +340,7 @@ Move from **reactive** troubleshooting (run when something breaks) to **proactiv
 
 1. A background job starts the same investigation flow as **Investigate Cluster**
 2. Results are saved to **Investigations** (view last run from the schedule card)
-3. If Slack or PagerDuty is enabled, AI recommendations are delivered — **at most once per cooldown window** per user (see [Integrations](#integrations))
+3. If Slack, Microsoft Teams, or PagerDuty is enabled, AI recommendations are delivered — **at most once per cooldown window** per user (see [Integrations](#integrations))
 
 **Example:** an hourly schedule at `:00` runs 24 investigations per day, but Slack receives at most **24 alerts** capped to **~1 per hour** — not 24 messages in one hour.
 
@@ -342,7 +387,7 @@ Regenerate the AWS services diagram: `python3 scripts/build_aws_services_diagram
 
 ## Architecture
 
-Application request flow: the browser talks to the Next.js frontend, which calls the FastAPI backend. The API routes requests to agent modules (Kubernetes, AWS, Cloud Cost, PR Reviewer), each using a shared AI layer and persisting results to SQLite or PostgreSQL. **Proactive schedules** trigger Kubernetes investigations via APScheduler; completed AI recommendations can flow to **Slack** and **PagerDuty** with configurable per-user cooldowns.
+Application request flow: the browser talks to the Next.js frontend, which calls the FastAPI backend. The API routes requests to agent modules (Kubernetes, AWS, Cloud Cost, PR Reviewer), each using a shared AI layer and persisting results to SQLite or PostgreSQL. **Proactive schedules** trigger Kubernetes investigations via APScheduler; completed AI recommendations can flow to **Slack**, **Microsoft Teams**, and **PagerDuty** with configurable per-user cooldowns.
 
 ![Application request flow](img/application-request-flow.png)
 
@@ -763,6 +808,10 @@ GITHUB_WEBHOOK_SECRET=
 # PAGERDUTY_INSTANCE_ROUTING_KEY=
 # PAGERDUTY_NOTIFICATION_COOLDOWN_MINUTES=60
 
+# Microsoft Teams notifications (optional — see Integrations)
+# TEAMS_INSTANCE_WEBHOOK_URL=https://outlook.office.com/webhook/...
+# TEAMS_NOTIFICATION_COOLDOWN_MINUTES=60
+
 # MCP server (optional — see Integrations)
 # MCP_INSTANCE_SERVER_URL=
 # MCP_INSTANCE_API_KEY=
@@ -949,7 +998,7 @@ open-devops-agent/
 │   └── app/
 │       ├── modules/      # Agent modules (aws, cloud_cost, pr_reviewer, ...)
 │       ├── ai/           # Shared LLM providers
-│       ├── notifications/# Slack & PagerDuty delivery + cooldown
+│       ├── notifications/# Slack, Teams & PagerDuty delivery + cooldown
 │       ├── services/     # Investigation jobs, schedules, integration settings
 │       └── storage/      # SQLite history stores
 ├── frontend/             # Next.js UI (Investigate, Schedules, Integrations, …)

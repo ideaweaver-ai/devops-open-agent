@@ -13,6 +13,7 @@ from app.modules.cloud_cost_detector.services.investigation_service import Cloud
 from app.modules.cloud_cost_detector.models.schemas import CloudCostInvestigationResponse
 from app.notifications.pagerduty_notification_service import pagerduty_notification_service
 from app.notifications.slack_notification_service import slack_notification_service
+from app.notifications.teams_notification_service import teams_notification_service
 from app.services.mcp_enrichment_service import mcp_enrichment_service
 from app.services.diagnosis_service import DiagnosisService
 from app.services.investigation_service import InvestigationService
@@ -313,6 +314,13 @@ class InvestigationJobService:
             user_id=user_id,
         )
         pagerduty_notification_service.schedule_investigation_notification(
+            investigation_id=investigation_id,
+            agent_type=agent_type,
+            scope_label=scope_label,
+            diagnosis=diagnosis,
+            user_id=user_id,
+        )
+        teams_notification_service.schedule_investigation_notification(
             investigation_id=investigation_id,
             agent_type=agent_type,
             scope_label=scope_label,

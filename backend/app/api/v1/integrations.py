@@ -8,6 +8,7 @@ from app.db.session import get_db_session
 from app.integrations.mcp.client import McpClientError
 from app.integrations.pagerduty.client import PagerDutyDeliveryError
 from app.integrations.slack.client import SlackDeliveryError
+from app.integrations.teams.client import TeamsDeliveryError
 from app.models.auth import UserResponse
 from app.models.mcp_integration import (
     McpAskRequest,
@@ -27,16 +28,24 @@ from app.models.slack_integration import (
     SlackIntegrationSettings,
     SlackTestResponse,
 )
+from app.models.teams_integration import (
+    TeamsIntegrationResponse,
+    TeamsIntegrationSettings,
+    TeamsTestResponse,
+)
 from app.notifications.pagerduty_notification_service import pagerduty_notification_service
 from app.notifications.slack_notification_service import slack_notification_service
+from app.notifications.teams_notification_service import teams_notification_service
 from app.services.mcp_settings_service import McpSettingsService
 from app.services.mcp_ask_service import mcp_ask_service
 from app.services.pagerduty_settings_service import PagerDutySettingsService
 from app.services.slack_settings_service import SlackSettingsService
+from app.services.teams_settings_service import TeamsSettingsService
 
 router = APIRouter(tags=["integrations"])
 slack_settings_service = SlackSettingsService()
 pagerduty_settings_service = PagerDutySettingsService()
+teams_settings_service = TeamsSettingsService()
 mcp_settings_service = McpSettingsService()
 
 
@@ -94,6 +103,47 @@ async def test_slack_integration(
     return SlackTestResponse(
         status="sent",
         message="Test message delivered to your configured Slack destination.",
+    )
+
+
+@router.get("/integrations/teams", response_model=TeamsIntegrationResponse)
+async def get_teams_integration(
+    current_user: UserResponse = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_session),
+) -> TeamsIntegrationResponse:
+    return await teams_settings_service.get_settings(session, current_user.id)
+
+
+@router.put("/integrations/teams", response_model=TeamsIntegrationResponse)
+async def update_teams_integration(
+    payload: TeamsIntegrationSettings,
+    current_user: UserResponse = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_session),
+) -> TeamsIntegrationResponse:
+    if payload.enabled:
+        existing = await teams_settings_service.get_settings(session, current_user.id)
+        has_webhook = bool(payload.webhook_url and payload.webhook_url.strip())
+        if not has_webhook and not existing.webhook_url_configured:
+            if not existing.instance_webhook_configured:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Teams webhook URL is required when notifications are enabled.",
+                )
+
+    return await teams_settings_service.upsert_settings(session, current_user.id, payload)
+
+
+@router.post("/integrations/teams/test", response_model=TeamsTestResponse)
+async def test_teams_integration(
+    current_user: UserResponse = Depends(get_current_user),
+) -> TeamsTestResponse:
+    try:
+        await teams_notification_service.send_test_message(current_user.id)
+    except TeamsDeliveryError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return TeamsTestResponse(
+        status="sent",
+        message="Test message delivered to your configured Microsoft Teams channel.",
     )
 
 

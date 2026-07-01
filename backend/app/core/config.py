@@ -90,6 +90,13 @@ class Settings(BaseSettings):
         description="Minimum minutes between PagerDuty alerts per user (reduces alert fatigue)",
     )
 
+    # Microsoft Teams notifications (optional instance-level defaults)
+    teams_instance_webhook_url: str = ""
+    teams_notification_cooldown_minutes: int = Field(
+        default=60,
+        description="Minimum minutes between Teams alerts per user (reduces alert fatigue)",
+    )
+
     # MCP integrations (optional instance-level defaults)
     mcp_instance_server_url: str = ""
     mcp_instance_api_key: str = ""

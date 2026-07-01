@@ -90,6 +90,35 @@ class PagerDutyNotificationCooldown(Base):
     last_sent_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
+class UserTeamsIntegration(Base):
+    __tablename__ = "user_teams_integrations"
+
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    webhook_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    notify_kubernetes: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    notify_aws: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    notify_cloud_cost: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    notify_pr_reviewer: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+
+class TeamsNotificationCooldown(Base):
+    __tablename__ = "teams_notification_cooldowns"
+
+    scope_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    last_sent_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
 class UserMcpIntegration(Base):
     __tablename__ = "user_mcp_integrations"
 
