@@ -20,6 +20,7 @@
 | **AWS DevOps Agent** | Troubleshoot AWS infrastructure — EC2, **Lambda**, **S3**, VPC, load balancers, CloudWatch, and more |
 | **Cloud Cost Detector** | Find unused and underutilized AWS resources |
 | **PR Reviewer** | AI DevOps review for GitHub pull requests |
+| **Performance Debugging** | Debug Linux host performance over passwordless SSH — CPU, memory, disk, and network + AI analysis |
 | **Integrations** | **Slack**, **Microsoft Teams**, **PagerDuty**, **MCP**, and **Qdrant (RAG)** — notifications, on-call incidents, external tool servers, and investigation memory |
 
 ## Demo Video
@@ -386,6 +387,45 @@ RAG_MAX_RESULTS=4
 
 Use **Test connection** to verify the Qdrant endpoint and embeddings. Investigations expose an `include_rag` flag on `POST /api/v1/investigate` for both `kubernetes` and `aws` agent types.
 
+## Performance Debugging
+
+Collect Linux performance signals from remote hosts over **passwordless SSH**, then run shared LLM analysis to identify which processes and PIDs are driving CPU, memory, disk, or network pressure.
+
+**UI:** Performance Debugging → **Debug** (`/performance`)
+
+<p align="center">
+  <img src="img/product-tour/15-performance-debugging.png" alt="Performance Debugging — enter hostnames or upload a host list, then start debugging" width="100%" />
+</p>
+
+| Input | Description |
+|-------|-------------|
+| **Hostnames** | One host per line (`hostname` or `user@host`); `#` comments ignored |
+| **Host list file** | Upload a `.txt` or `.csv` with one hostname per line (parsed in the browser) |
+| **Start Debugging** | Starts an async job: SSH collect → AI analysis per host → overall summary |
+
+**What gets collected (per host)**
+
+- Uptime / load and CPU count
+- Memory (`free`) and disk usage (`df`)
+- Top CPU and memory processes (`ps`)
+- Network summary (`ss -s`) and pressure stall info when available
+
+**Requirements**
+
+- Passwordless SSH from the machine (or Docker host) running DevOps Open Agent to every target
+- OpenSSH `BatchMode` only — no password prompt or key upload in the UI
+- Docker Compose mounts `${HOME}/.ssh` into the backend container read-only
+
+**API** (authenticated):
+
+| Method | Endpoint |
+|--------|----------|
+| `POST` | `/api/v1/performance/debug` |
+| `GET` | `/api/v1/performance/debug/{id}/status` |
+| `GET` | `/api/v1/performance/debug/{id}` |
+
+Remediation suggestions are **advice only** — the agent does not run `kill`, `sysctl`, or other changes on your hosts.
+
 ## Proactive Kubernetes Schedules
 
 Move from **reactive** troubleshooting (run when something breaks) to **proactive** monitoring — schedule recurring Kubernetes investigations with the same AI pipeline used for manual runs.
@@ -457,7 +497,7 @@ Regenerate the AWS services diagram: `python3 scripts/build_aws_services_diagram
 
 ## Architecture
 
-Application request flow: the browser talks to the Next.js frontend, which calls the FastAPI backend. The API routes requests to agent modules (Kubernetes, AWS, Cloud Cost, PR Reviewer), each using a shared AI layer and persisting results to SQLite or PostgreSQL. **Proactive schedules** trigger Kubernetes investigations via APScheduler; completed AI recommendations can flow to **Slack**, **Microsoft Teams**, and **PagerDuty** with configurable per-user cooldowns.
+Application request flow: the browser talks to the Next.js frontend, which calls the FastAPI backend. The API routes requests to agent modules (Kubernetes, AWS, Cloud Cost, PR Reviewer, Performance Debugging), each using a shared AI layer and persisting results to SQLite or PostgreSQL. **Proactive schedules** trigger Kubernetes investigations via APScheduler; completed AI recommendations can flow to **Slack**, **Microsoft Teams**, and **PagerDuty** with configurable per-user cooldowns.
 
 ![Application request flow](img/application-request-flow.png)
 
@@ -465,7 +505,7 @@ For full platform diagrams and module internals, see [docs/ARCHITECTURE.md](docs
 
 ## Product Tour
 
-Screenshots from the platform across all four agent modules.
+Screenshots from the platform across the agent modules.
 
 ### 1. DevOps Open Agent
 
@@ -593,6 +633,14 @@ Completed AI DevOps PR review with risk rating and structured security and relia
   <img src="img/product-tour/14-pr-review-ai-analysis.png" alt="PR review AI analysis" width="100%" />
 </p>
 
+### 15. Performance Debugging
+
+Enter hostnames (or upload a host list), collect Linux metrics over passwordless SSH, and run shared AI performance analysis. See [Performance Debugging](#performance-debugging).
+
+<p align="center">
+  <img src="img/product-tour/15-performance-debugging.png" alt="Performance Debugging agent" width="100%" />
+</p>
+
 You can also [download the product tour as a PDF](docs/devops-open-agent-product-tour.pdf).
 
 ## Prerequisites
@@ -603,6 +651,7 @@ You can also [download the product tour as a PDF](docs/devops-open-agent-product
 - Optional: `~/.kube/config` for Kubernetes investigations
 - Optional: `~/.aws/credentials` for AWS and Cloud Cost modules
 - Optional: GitHub token for PR Reviewer
+- Optional: passwordless SSH (`~/.ssh`) for Performance Debugging
 
 ### Ubuntu one-line installs
 
@@ -828,6 +877,16 @@ docker compose up -d --force-recreate backend
 ```
 
 > **Note:** If an older install already created `admin@example.com`, delete the Postgres volume or sign up a new user. Fresh installs use username `admin`.
+
+### Authentication today and roadmap
+
+DevOps Open Agent currently uses **self-hosted username/password auth**:
+
+- Passwords stored as **bcrypt** hashes in PostgreSQL
+- Successful login/signup returns a signed **JWT** bearer token
+- Protected APIs require `Authorization: Bearer <token>`
+
+**Roadmap:** OAuth and integration with external identity providers (for example Google, GitHub, and enterprise SSO/IdP options) are planned so teams can use their existing identity stack instead of only local accounts.
 
 ## Manual Setup
 

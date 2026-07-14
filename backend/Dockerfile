@@ -6,7 +6,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends curl ca-certificates \
+    && apt-get install -y --no-install-recommends curl ca-certificates openssh-client \
     && ARCH="$(uname -m)" \
     && case "$ARCH" in \
         x86_64) KUBECTL_ARCH=amd64 ;; \

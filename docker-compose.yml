@@ -37,6 +37,7 @@ services:
     volumes:
       - ${HOME}/.kube:/home/kube/.kube:ro
       - ${HOME}/.aws:/root/.aws:ro
+      - ${HOME}/.ssh:/root/.ssh:ro
       - backend-data:/app/data
     env_file:
       - backend/.env

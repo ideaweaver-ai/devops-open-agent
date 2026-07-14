@@ -64,6 +64,23 @@ const AGENT_ICONS: Record<string, ReactNode> = {
       <rect x="4" y="3" width="16" height="18" rx="2" stroke="currentColor" strokeWidth="1.5" />
     </svg>
   ),
+  performance: (
+    <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" aria-hidden>
+      <path
+        d="M4 19V5M4 19h16"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+      <path
+        d="M8 15l3-4 3 2 4-6"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  ),
 };
 
 function getPageTitle(pathname: string, sectionName: string): string {

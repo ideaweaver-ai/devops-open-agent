@@ -102,6 +102,15 @@ export const PLATFORM_AGENTS: PlatformAgent[] = [
     ],
     matchesPath: (pathname) => pathname.startsWith("/pr-reviewer"),
   },
+  {
+    id: "performance",
+    name: "Performance Debugging",
+    href: "/performance",
+    description: "Debug Linux host performance over passwordless SSH.",
+    available: true,
+    nav: [{ href: "/performance", label: "Debug" }],
+    matchesPath: (pathname) => pathname.startsWith("/performance"),
+  },
 ];
 
 export function getActiveAgent(pathname: string): PlatformAgent {
@@ -132,6 +141,8 @@ export function formatAgentType(agentType?: string | null): string {
     case "pr-reviewer":
     case "pr_reviewer":
       return "PR Reviewer";
+    case "performance":
+      return "Performance Debugging";
     case "kubernetes":
       return "Kubernetes";
     default:
