@@ -4,6 +4,14 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { securityApi } from "@/services/securityApi";
 import type { SecurityScanRequest } from "@/types/security";
 
+export function useSecurityScanHistory() {
+  return useQuery({
+    queryKey: ["security", "history"],
+    queryFn: () => securityApi.listScans(),
+    refetchInterval: 10_000,
+  });
+}
+
 export function useStartSecurityScan() {
   return useMutation({
     mutationFn: (request: SecurityScanRequest) => securityApi.startScan(request),

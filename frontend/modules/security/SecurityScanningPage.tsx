@@ -1,6 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import axios from "axios";
 import { AppShell } from "@/components/layout/AppShell";
 import { RequireAuth } from "@/components/auth/RequireAuth";
@@ -72,6 +74,7 @@ function SeverityCard({
 }
 
 export function SecurityScanningPage() {
+  const searchParams = useSearchParams();
   const [scanType, setScanType] = useState<ScanType>("image");
   const [imageName, setImageName] = useState("");
   const [namespace, setNamespace] = useState("");
@@ -83,6 +86,15 @@ export function SecurityScanningPage() {
   const [showAiPanel, setShowAiPanel] = useState(true);
   const [sortField, setSortField] = useState<"severity" | "id">("severity");
   const [sortAsc, setSortAsc] = useState(false);
+
+  const isViewOnly = Boolean(searchParams.get("scan_id"));
+
+  useEffect(() => {
+    const urlScanId = searchParams.get("scan_id");
+    if (urlScanId && !activeScanId) {
+      setActiveScanId(urlScanId);
+    }
+  }, [searchParams, activeScanId]);
 
   const clustersQuery = useClusters();
   const clusterOptions = resolveClusterOptions(clustersQuery.data?.clusters);
@@ -185,182 +197,198 @@ export function SecurityScanningPage() {
     <RequireAuth>
       <AppShell>
         <div className="space-y-6">
-          <section>
-            <h1 className="text-3xl font-bold tracking-tight text-slate-900">
-              Security Scanning
-            </h1>
-            <p className="mt-2 text-slate-600">
-              Scan container images and Kubernetes clusters for vulnerabilities
-              and misconfigurations using Trivy, with optional AI analysis.
-            </p>
-          </section>
-
-          {/* Scan Form */}
-          <section className="panel-accent p-6">
-            <div className="mb-5 border-b border-slate-200 pb-4">
-              <h2 className="panel-title">Start Scan</h2>
-              <p className="mt-1 text-xs text-slate-600">
-                Choose a scan type and configure options.
-              </p>
-            </div>
-
-            {/* Scan Type Tabs */}
-            <div className="mb-5 flex gap-2">
-              <button
-                type="button"
-                onClick={() => setScanType("image")}
-                disabled={isRunning}
-                className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
-                  scanType === "image"
-                    ? "bg-brand-600 text-white shadow-sm"
-                    : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-                }`}
+          {isViewOnly ? (
+            <section>
+              <Link
+                href="/security/investigations"
+                className="inline-flex items-center gap-1 text-sm font-medium text-brand-600 hover:text-brand-700"
               >
-                Container Image
-              </button>
-              <button
-                type="button"
-                onClick={() => setScanType("kubernetes")}
-                disabled={isRunning}
-                className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
-                  scanType === "kubernetes"
-                    ? "bg-brand-600 text-white shadow-sm"
-                    : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-                }`}
-              >
-                Kubernetes Cluster
-              </button>
-            </div>
+                ← Back to Investigations
+              </Link>
+              <h1 className="mt-3 text-3xl font-bold tracking-tight text-slate-900">
+                Investigation Detail
+              </h1>
+            </section>
+          ) : (
+            <>
+              <section>
+                <h1 className="text-3xl font-bold tracking-tight text-slate-900">
+                  Security Scanning
+                </h1>
+                <p className="mt-2 text-slate-600">
+                  Scan container images and Kubernetes clusters for vulnerabilities
+                  and misconfigurations using Trivy, with optional AI analysis.
+                </p>
+              </section>
 
-            {/* Image Name */}
-            {scanType === "image" && (
-              <div className="mb-5">
-                <label htmlFor="image-name" className="section-label">
-                  Image Name
-                </label>
-                <input
-                  id="image-name"
-                  type="text"
-                  value={imageName}
-                  onChange={(e) => setImageName(e.target.value)}
-                  disabled={isRunning}
-                  placeholder="nginx:latest, myregistry.io/app:v1"
-                  className="input-field mt-1"
-                />
-              </div>
-            )}
-
-            {/* Cluster + Namespace */}
-            {scanType === "kubernetes" && (
-              <>
-                <div className="mb-5">
-                  <ClusterSelector
-                    clusters={
-                      clustersQuery.data?.clusters?.map((c) => ({
-                        cluster_id: c.cluster_id,
-                        context: c.cluster_id,
-                        name: c.cluster_id,
-                        active: c.active,
-                      })) ?? []
-                    }
-                    clusterId={activeCluster}
-                    onClusterChange={setSelectedCluster}
-                    disabled={isRunning}
-                    loading={clustersQuery.isLoading}
-                    error={
-                      clustersQuery.isError
-                        ? "Could not load clusters from kubeconfig."
-                        : null
-                    }
-                    label="Cluster"
-                    compact
-                  />
+              {/* Scan Form */}
+              <section className="panel-accent p-6">
+                <div className="mb-5 border-b border-slate-200 pb-4">
+                  <h2 className="panel-title">Start Scan</h2>
+                  <p className="mt-1 text-xs text-slate-600">
+                    Choose a scan type and configure options.
+                  </p>
                 </div>
-                <div className="mb-5">
-                  <label htmlFor="k8s-namespace" className="section-label">
-                    Namespace (optional)
-                  </label>
-                  <input
-                    id="k8s-namespace"
-                    type="text"
-                    value={namespace}
-                    onChange={(e) => setNamespace(e.target.value)}
-                    disabled={isRunning}
-                    placeholder="Leave blank to scan all namespaces"
-                    className="input-field mt-1"
-                  />
-                </div>
-              </>
-            )}
 
-            {/* Severity Filter */}
-            <div className="mb-5">
-              <p className="section-label">Severity Filter</p>
-              <div className="mt-2 flex flex-wrap gap-3">
-                {ALL_SEVERITIES.map((sev) => (
-                  <label
-                    key={sev}
-                    className="flex items-center gap-1.5 text-sm text-slate-700"
+                {/* Scan Type Tabs */}
+                <div className="mb-5 flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setScanType("image")}
+                    disabled={isRunning}
+                    className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
+                      scanType === "image"
+                        ? "bg-brand-600 text-white shadow-sm"
+                        : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                    }`}
                   >
+                    Container Image
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setScanType("kubernetes")}
+                    disabled={isRunning}
+                    className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
+                      scanType === "kubernetes"
+                        ? "bg-brand-600 text-white shadow-sm"
+                        : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                    }`}
+                  >
+                    Kubernetes Cluster
+                  </button>
+                </div>
+
+                {/* Image Name */}
+                {scanType === "image" && (
+                  <div className="mb-5">
+                    <label htmlFor="image-name" className="section-label">
+                      Image Name
+                    </label>
+                    <input
+                      id="image-name"
+                      type="text"
+                      value={imageName}
+                      onChange={(e) => setImageName(e.target.value)}
+                      disabled={isRunning}
+                      placeholder="nginx:latest, myregistry.io/app:v1"
+                      className="input-field mt-1"
+                    />
+                  </div>
+                )}
+
+                {/* Cluster + Namespace */}
+                {scanType === "kubernetes" && (
+                  <>
+                    <div className="mb-5">
+                      <ClusterSelector
+                        clusters={
+                          clustersQuery.data?.clusters?.map((c) => ({
+                            cluster_id: c.cluster_id,
+                            context: c.cluster_id,
+                            name: c.cluster_id,
+                            active: c.active,
+                          })) ?? []
+                        }
+                        clusterId={activeCluster}
+                        onClusterChange={setSelectedCluster}
+                        disabled={isRunning}
+                        loading={clustersQuery.isLoading}
+                        error={
+                          clustersQuery.isError
+                            ? "Could not load clusters from kubeconfig."
+                            : null
+                        }
+                        label="Cluster"
+                        compact
+                      />
+                    </div>
+                    <div className="mb-5">
+                      <label htmlFor="k8s-namespace" className="section-label">
+                        Namespace (optional)
+                      </label>
+                      <input
+                        id="k8s-namespace"
+                        type="text"
+                        value={namespace}
+                        onChange={(e) => setNamespace(e.target.value)}
+                        disabled={isRunning}
+                        placeholder="Leave blank to scan all namespaces"
+                        className="input-field mt-1"
+                      />
+                    </div>
+                  </>
+                )}
+
+                {/* Severity Filter */}
+                <div className="mb-5">
+                  <p className="section-label">Severity Filter</p>
+                  <div className="mt-2 flex flex-wrap gap-3">
+                    {ALL_SEVERITIES.map((sev) => (
+                      <label
+                        key={sev}
+                        className="flex items-center gap-1.5 text-sm text-slate-700"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={severityFilter.includes(sev)}
+                          onChange={() => handleSeverityToggle(sev)}
+                          disabled={isRunning}
+                          className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+                        />
+                        {sev}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                {/* AI Toggle */}
+                <div className="mb-5">
+                  <label className="flex items-center gap-2 text-sm text-slate-700">
                     <input
                       type="checkbox"
-                      checked={severityFilter.includes(sev)}
-                      onChange={() => handleSeverityToggle(sev)}
+                      checked={includeAi}
+                      onChange={(e) => setIncludeAi(e.target.checked)}
                       disabled={isRunning}
                       className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
                     />
-                    {sev}
+                    Include AI Analysis
                   </label>
-                ))}
-              </div>
-            </div>
+                  <p className="ml-6 mt-1 text-xs text-slate-500">
+                    Uses the configured LLM to prioritize findings and suggest
+                    remediations.
+                  </p>
+                </div>
 
-            {/* AI Toggle */}
-            <div className="mb-5">
-              <label className="flex items-center gap-2 text-sm text-slate-700">
-                <input
-                  type="checkbox"
-                  checked={includeAi}
-                  onChange={(e) => setIncludeAi(e.target.checked)}
-                  disabled={isRunning}
-                  className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
-                />
-                Include AI Analysis
-              </label>
-              <p className="ml-6 mt-1 text-xs text-slate-500">
-                Uses the configured LLM to prioritize findings and suggest
-                remediations.
-              </p>
-            </div>
+                {userError && (
+                  <div className="mb-4 rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm font-medium text-red-800">
+                    {userError}
+                  </div>
+                )}
 
-            {userError && (
-              <div className="mb-4 rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm font-medium text-red-800">
-                {userError}
-              </div>
-            )}
-
-            <button
-              type="button"
-              onClick={() => void handleStart()}
-              disabled={
-                isRunning ||
-                (scanType === "image" && !imageName.trim()) ||
-                severityFilter.length === 0
-              }
-              className="btn-primary max-w-xs"
-            >
-              {isRunning ? (
-                <span className="flex items-center gap-2">
-                  <span className="inline-flex h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                  Scanning...
-                </span>
-              ) : scanType === "image" ? (
-                "Scan Image"
-              ) : (
-                "Scan Cluster"
-              )}
-            </button>
-          </section>
+                <button
+                  type="button"
+                  onClick={() => void handleStart()}
+                  disabled={
+                    isRunning ||
+                    (scanType === "image" && !imageName.trim()) ||
+                    severityFilter.length === 0
+                  }
+                  className="btn-primary max-w-xs"
+                >
+                  {isRunning ? (
+                    <span className="flex items-center gap-2">
+                      <span className="inline-flex h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                      Scanning...
+                    </span>
+                  ) : scanType === "image" ? (
+                    "Scan Image"
+                  ) : (
+                    "Scan Cluster"
+                  )}
+                </button>
+              </section>
+            </>
+          )}
 
           {/* Progress / Results */}
           {activeScanId && (
@@ -604,6 +632,16 @@ export function SecurityScanningPage() {
                 </div>
               )}
 
+              {detail?.status === "completed" &&
+                !result?.ai_analysis &&
+                !result?.llm_error &&
+                detail.current_step === "ai_analysis" && (
+                  <div className="mt-4 flex items-center gap-2.5 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+                    <span className="inline-flex h-4 w-4 animate-spin rounded-full border-2 border-blue-300 border-t-blue-600" />
+                    AI analysis in progress — the LLM is processing your scan results…
+                  </div>
+                )}
+
               {/* Empty state when scan complete but no findings */}
               {result &&
                 sortedVulns.length === 0 &&
@@ -622,24 +660,26 @@ export function SecurityScanningPage() {
             </section>
           )}
 
-          <aside className="rounded-xl border border-blue-200 bg-blue-50 px-5 py-4 text-sm text-blue-950">
-            <p className="font-semibold">NOTE</p>
-            <p className="mt-1.5 leading-relaxed">
-              Security scanning is powered by{" "}
-              <a
-                href="https://github.com/aquasecurity/trivy"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-semibold underline hover:text-blue-700"
-              >
-                Trivy
-              </a>{" "}
-              (bundled in the Docker image). Container image scans pull the
-              image inside the backend container. Kubernetes cluster scans
-              require a valid kubeconfig mounted into the container (same as the
-              Kubernetes Debugging agent).
-            </p>
-          </aside>
+          {!isViewOnly && (
+            <aside className="rounded-xl border border-blue-200 bg-blue-50 px-5 py-4 text-sm text-blue-950">
+              <p className="font-semibold">NOTE</p>
+              <p className="mt-1.5 leading-relaxed">
+                Security scanning is powered by{" "}
+                <a
+                  href="https://github.com/aquasecurity/trivy"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-semibold underline hover:text-blue-700"
+                >
+                  Trivy
+                </a>{" "}
+                (bundled in the Docker image). Container image scans pull the
+                image inside the backend container. Kubernetes cluster scans
+                require a valid kubeconfig mounted into the container (same as the
+                Kubernetes Debugging agent).
+              </p>
+            </aside>
+          )}
         </div>
       </AppShell>
     </RequireAuth>

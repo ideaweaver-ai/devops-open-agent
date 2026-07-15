@@ -1,6 +1,7 @@
 import { apiClient } from "@/services/api";
 import type {
   SecurityScanDetailResponse,
+  SecurityScanHistoryResponse,
   SecurityScanRequest,
   SecurityScanStartResponse,
   SecurityScanStatusResponse,
@@ -26,6 +27,13 @@ export const securityApi = {
   async getScanDetail(scanId: string): Promise<SecurityScanDetailResponse> {
     const response = await apiClient.get<SecurityScanDetailResponse>(
       `/api/v1/security/scan/${scanId}`,
+    );
+    return response.data;
+  },
+
+  async listScans(): Promise<SecurityScanHistoryResponse> {
+    const response = await apiClient.get<SecurityScanHistoryResponse>(
+      "/api/v1/security/scan",
     );
     return response.data;
   },

@@ -9,6 +9,8 @@ from app.models.auth import UserResponse
 from app.modules.performance.models import (
     HostDebugResult,
     PerformanceDebugDetailResponse,
+    PerformanceDebugHistoryItem,
+    PerformanceDebugHistoryResponse,
     PerformanceDebugRequest,
     PerformanceDebugStartResponse,
     PerformanceDebugStatusResponse,
@@ -22,6 +24,30 @@ debug_service = PerformanceDebugService()
 
 def _to_host_results(record: dict) -> list[HostDebugResult]:
     return [HostDebugResult.model_validate(item) for item in record.get("hosts") or []]
+
+
+@router.get("/performance/debug", response_model=PerformanceDebugHistoryResponse)
+async def list_performance_debug_jobs(
+    _current_user: UserResponse = Depends(get_current_user),
+) -> PerformanceDebugHistoryResponse:
+    store = get_performance_debug_store()
+    records = await store.list_all()
+    items = []
+    for record in records:
+        hosts = record.get("hosts") or []
+        host_names = [h["host"] for h in hosts[:3]]
+        suffix = f" +{len(hosts) - 3}" if len(hosts) > 3 else ""
+        items.append(
+            PerformanceDebugHistoryItem(
+                debug_id=record["debug_id"],
+                status=record["status"],
+                host_count=len(hosts),
+                hosts_summary=", ".join(host_names) + suffix,
+                overall_summary=record.get("overall_summary"),
+                created_at=record.get("created_at"),
+            )
+        )
+    return PerformanceDebugHistoryResponse(jobs=items)
 
 
 @router.post("/performance/debug", response_model=PerformanceDebugStartResponse)

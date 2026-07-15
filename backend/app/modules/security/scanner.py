@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import pathlib
 from typing import Any
 
 from loguru import logger
@@ -17,6 +18,7 @@ from app.modules.security.models import (
 )
 
 TRIVY_TIMEOUT_SECONDS = 600
+_trivy_lock = asyncio.Lock()
 
 
 class TrivyScanner:
@@ -78,23 +80,49 @@ class TrivyScanner:
         raw = await self._run(cmd)
         return self._parse_k8s_results(raw, namespace)
 
+    @staticmethod
+    def _kill_orphan_trivy_procs() -> None:
+        """Kill leftover ``trivy`` processes that may hold the flock on fanal.db."""
+        import os
+        import signal
+
+        my_pid = os.getpid()
+        proc_dir = pathlib.Path("/proc")
+        if not proc_dir.exists():
+            return
+        for entry in proc_dir.iterdir():
+            if not entry.name.isdigit():
+                continue
+            pid = int(entry.name)
+            if pid == my_pid:
+                continue
+            try:
+                cmdline = (entry / "cmdline").read_bytes()
+                if b"trivy" in cmdline:
+                    logger.warning("Killing orphan Trivy process | pid={}", pid)
+                    os.kill(pid, signal.SIGKILL)
+            except (OSError, PermissionError):
+                pass
+
     async def _run(self, cmd: list[str]) -> dict[str, Any]:
-        logger.info("Running Trivy | cmd={}", " ".join(cmd))
-        proc = await asyncio.create_subprocess_exec(
-            *cmd,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-        try:
-            stdout, stderr = await asyncio.wait_for(
-                proc.communicate(),
-                timeout=TRIVY_TIMEOUT_SECONDS,
+        async with _trivy_lock:
+            self._kill_orphan_trivy_procs()
+            logger.info("Running Trivy | cmd={}", " ".join(cmd))
+            proc = await asyncio.create_subprocess_exec(
+                *cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
             )
-        except asyncio.TimeoutError:
-            proc.kill()
-            raise RuntimeError(
-                f"Trivy timed out after {TRIVY_TIMEOUT_SECONDS}s"
-            ) from None
+            try:
+                stdout, stderr = await asyncio.wait_for(
+                    proc.communicate(),
+                    timeout=TRIVY_TIMEOUT_SECONDS,
+                )
+            except asyncio.TimeoutError:
+                proc.kill()
+                raise RuntimeError(
+                    f"Trivy timed out after {TRIVY_TIMEOUT_SECONDS}s"
+                ) from None
 
         stdout_text = stdout.decode(errors="replace")
         stderr_text = stderr.decode(errors="replace")
@@ -107,8 +135,16 @@ class TrivyScanner:
             )
 
         if not stdout_text.strip():
+            hint = ""
+            stderr_lower = stderr_text.lower()
+            if "unable to find the specified image" in stderr_lower or "no such image" in stderr_lower:
+                hint = " (image not found — check the image name for typos and ensure it exists locally or on the registry)"
+            elif "unauthorized" in stderr_lower:
+                hint = " (authentication required — the registry may need credentials)"
+            elif "unable to initialize a scan service" in stderr_lower:
+                hint = " (Trivy could not start the scan — try running with --debug for details)"
             raise RuntimeError(
-                f"Trivy produced no output (exit code {proc.returncode}). "
+                f"Trivy scan failed (exit code {proc.returncode}){hint}. "
                 f"stderr: {stderr_text[:500]}"
             )
 

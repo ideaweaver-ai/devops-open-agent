@@ -4,6 +4,14 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { performanceApi } from "@/services/performanceApi";
 import type { PerformanceDebugRequest } from "@/types/performance";
 
+export function usePerformanceDebugHistory() {
+  return useQuery({
+    queryKey: ["performance", "history"],
+    queryFn: () => performanceApi.listJobs(),
+    refetchInterval: 10_000,
+  });
+}
+
 export function useStartPerformanceDebug() {
   return useMutation({
     mutationFn: (request: PerformanceDebugRequest) => performanceApi.startDebug(request),

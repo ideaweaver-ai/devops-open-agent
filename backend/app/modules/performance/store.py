@@ -54,6 +54,15 @@ class PerformanceDebugStore:
             record = self._jobs.get(debug_id)
             return None if record is None else dict(record)
 
+    async def list_all(self) -> list[dict[str, Any]]:
+        async with self._lock:
+            items = sorted(
+                self._jobs.values(),
+                key=lambda r: r.get("created_at", ""),
+                reverse=True,
+            )
+            return [dict(r) for r in items]
+
     async def update_job(
         self,
         debug_id: str,

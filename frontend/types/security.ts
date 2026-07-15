@@ -61,3 +61,17 @@ export interface SecurityScanDetailResponse extends SecurityScanStatusResponse {
   updated_at?: string | null;
   result?: ScanResult | null;
 }
+
+export interface SecurityScanHistoryItem {
+  scan_id: string;
+  scan_type: ScanType;
+  target: string;
+  status: ScanJobStatus;
+  vulnerability_count: number;
+  misconfiguration_count: number;
+  created_at?: string | null;
+}
+
+export interface SecurityScanHistoryResponse {
+  scans: SecurityScanHistoryItem[];
+}

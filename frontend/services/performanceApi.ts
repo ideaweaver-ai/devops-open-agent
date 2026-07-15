@@ -1,6 +1,7 @@
 import { apiClient } from "@/services/api";
 import type {
   PerformanceDebugDetail,
+  PerformanceDebugHistoryResponse,
   PerformanceDebugRequest,
   PerformanceDebugStartResponse,
   PerformanceDebugStatus,
@@ -26,6 +27,13 @@ export const performanceApi = {
   async getDetail(debugId: string): Promise<PerformanceDebugDetail> {
     const response = await apiClient.get<PerformanceDebugDetail>(
       `/api/v1/performance/debug/${debugId}`,
+    );
+    return response.data;
+  },
+
+  async listJobs(): Promise<PerformanceDebugHistoryResponse> {
+    const response = await apiClient.get<PerformanceDebugHistoryResponse>(
+      "/api/v1/performance/debug",
     );
     return response.data;
   },

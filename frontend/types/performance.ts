@@ -44,3 +44,16 @@ export interface PerformanceDebugDetail extends PerformanceDebugStatus {
   updated_at?: string | null;
   overall_summary?: string | null;
 }
+
+export interface PerformanceDebugHistoryItem {
+  debug_id: string;
+  status: PerformanceJobStatus;
+  host_count: number;
+  hosts_summary: string;
+  overall_summary?: string | null;
+  created_at?: string | null;
+}
+
+export interface PerformanceDebugHistoryResponse {
+  jobs: PerformanceDebugHistoryItem[];
+}

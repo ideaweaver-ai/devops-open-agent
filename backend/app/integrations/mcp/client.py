@@ -27,7 +27,15 @@ def _format_probe_error(exc: BaseException) -> str:
         status = exc.response.status_code
         if status in {401, 403}:
             return "MCP server rejected the API key (check Authorization Bearer token)."
-        return f"MCP server returned HTTP {status}."
+        body = ""
+        try:
+            body = exc.response.text[:300].strip()
+        except Exception:
+            pass
+        detail = f"MCP server returned HTTP {status}."
+        if body:
+            detail += f" Response: {body}"
+        return detail
     if isinstance(exc, ExceptionGroup):
         for sub in exc.exceptions:
             return _format_probe_error(sub)

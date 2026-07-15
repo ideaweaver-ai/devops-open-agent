@@ -1,6 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import axios from "axios";
 import { AppShell } from "@/components/layout/AppShell";
 import { RequireAuth } from "@/components/auth/RequireAuth";
@@ -84,11 +86,21 @@ function statusLabel(status: HostDebugResult["status"]): string {
 }
 
 export function PerformanceDebuggingPage() {
+  const searchParams = useSearchParams();
   const [hostText, setHostText] = useState("");
   const [fileName, setFileName] = useState<string | null>(null);
   const [activeDebugId, setActiveDebugId] = useState<string | null>(null);
   const [userError, setUserError] = useState<string | null>(null);
   const [expandedHost, setExpandedHost] = useState<string | null>(null);
+
+  const isViewOnly = Boolean(searchParams.get("debug_id"));
+
+  useEffect(() => {
+    const urlDebugId = searchParams.get("debug_id");
+    if (urlDebugId && !activeDebugId) {
+      setActiveDebugId(urlDebugId);
+    }
+  }, [searchParams, activeDebugId]);
 
   const startDebug = useStartPerformanceDebug();
   const detailQuery = usePerformanceDebugDetail(activeDebugId, Boolean(activeDebugId));
@@ -147,86 +159,102 @@ export function PerformanceDebuggingPage() {
     <RequireAuth>
       <AppShell>
         <div className="space-y-6">
-          <section>
-            <h1 className="text-3xl font-bold tracking-tight text-slate-900">
-              Performance Debugging
-            </h1>
-            <p className="mt-2 text-slate-600">
-              Collect Linux CPU, memory, disk, and network signals over SSH, then run shared AI
-              analysis.
-            </p>
-          </section>
+          {isViewOnly ? (
+            <section>
+              <Link
+                href="/performance/investigations"
+                className="inline-flex items-center gap-1 text-sm font-medium text-brand-600 hover:text-brand-700"
+              >
+                ← Back to Investigations
+              </Link>
+              <h1 className="mt-3 text-3xl font-bold tracking-tight text-slate-900">
+                Investigation Detail
+              </h1>
+            </section>
+          ) : (
+            <>
+              <section>
+                <h1 className="text-3xl font-bold tracking-tight text-slate-900">
+                  Performance Debugging
+                </h1>
+                <p className="mt-2 text-slate-600">
+                  Collect Linux CPU, memory, disk, and network signals over SSH, then run shared AI
+                  analysis.
+                </p>
+              </section>
 
-          <section className="panel-accent p-6">
-            <div className="mb-5 border-b border-slate-200 pb-4">
-              <h2 className="panel-title">Start Debugging</h2>
-              <p className="mt-1 text-xs text-slate-600">
-                Provide one hostname, multiple hosts (one per line), or upload a host list file.
-              </p>
-            </div>
+              <section className="panel-accent p-6">
+                <div className="mb-5 border-b border-slate-200 pb-4">
+                  <h2 className="panel-title">Start Debugging</h2>
+                  <p className="mt-1 text-xs text-slate-600">
+                    Provide one hostname, multiple hosts (one per line), or upload a host list file.
+                  </p>
+                </div>
 
-            <div className="mb-5">
-              <label htmlFor="performance-hosts" className="section-label">
-                Hostnames
-              </label>
-              <textarea
-                id="performance-hosts"
-                value={hostText}
-                onChange={(event) => {
-                  setHostText(event.target.value);
-                  setFileName(null);
-                }}
-                disabled={isRunning}
-                rows={6}
-                placeholder={"web-01.example.com\nubuntu@db-02.example.com\n# comments are ignored"}
-                className="input-field mt-1 resize-y font-mono text-xs"
-              />
-              <p className="mt-2 text-xs text-slate-600">
-                {parsedHosts.length} host{parsedHosts.length === 1 ? "" : "s"} ready
-                {parsedHosts.length >= MAX_HOSTS ? ` (capped at ${MAX_HOSTS})` : ""}.
-                {fileName ? ` Loaded from ${fileName}.` : ""}
-              </p>
-            </div>
+                <div className="mb-5">
+                  <label htmlFor="performance-hosts" className="section-label">
+                    Hostnames
+                  </label>
+                  <textarea
+                    id="performance-hosts"
+                    value={hostText}
+                    onChange={(event) => {
+                      setHostText(event.target.value);
+                      setFileName(null);
+                    }}
+                    disabled={isRunning}
+                    rows={6}
+                    placeholder={"web-01.example.com\nubuntu@db-02.example.com\n# comments are ignored"}
+                    className="input-field mt-1 resize-y font-mono text-xs"
+                  />
+                  <p className="mt-2 text-xs text-slate-600">
+                    {parsedHosts.length} host{parsedHosts.length === 1 ? "" : "s"} ready
+                    {parsedHosts.length >= MAX_HOSTS ? ` (capped at ${MAX_HOSTS})` : ""}.
+                    {fileName ? ` Loaded from ${fileName}.` : ""}
+                  </p>
+                </div>
 
-            <div className="mb-5">
-              <p className="section-label">Or upload host list</p>
-              <input
-                type="file"
-                accept=".txt,.csv,text/plain,text/csv"
-                disabled={isRunning}
-                onChange={(event) => {
-                  void handleFileUpload(event.target.files?.[0] ?? null);
-                  event.target.value = "";
-                }}
-                className="mt-1 block w-full text-sm text-slate-700 file:mr-3 file:rounded-lg file:border-0 file:bg-brand-50 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-brand-700 hover:file:bg-brand-100"
-              />
-              <p className="mt-2 text-xs text-slate-600">
-                Accepts .txt or .csv with one hostname (or user@host) per line.
-              </p>
-            </div>
+                <div className="mb-5">
+                  <p className="section-label">Or upload host list</p>
+                  <input
+                    type="file"
+                    accept=".txt,.csv,text/plain,text/csv"
+                    disabled={isRunning}
+                    onChange={(event) => {
+                      void handleFileUpload(event.target.files?.[0] ?? null);
+                      event.target.value = "";
+                    }}
+                    className="mt-1 block w-full text-sm text-slate-700 file:mr-3 file:rounded-lg file:border-0 file:bg-brand-50 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-brand-700 hover:file:bg-brand-100"
+                  />
+                  <p className="mt-2 text-xs text-slate-600">
+                    Accepts .txt or .csv with one hostname (or user@host) per line.
+                  </p>
+                </div>
 
-            {userError && (
-              <div className="mb-4 rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm font-medium text-red-800">
-                {userError}
-              </div>
-            )}
+                {userError && (
+                  <div className="mb-4 rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm font-medium text-red-800">
+                    {userError}
+                  </div>
+                )}
 
-            <button
-              type="button"
-              onClick={() => void handleStart()}
-              disabled={isRunning || parsedHosts.length === 0}
-              className="btn-primary max-w-xs"
-            >
-              {isRunning ? (
-                <span className="flex items-center gap-2">
-                  <span className="inline-flex h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                  Debugging...
-                </span>
-              ) : (
-                "Start Debugging"
-              )}
-            </button>
-          </section>
+                <button
+                  type="button"
+                  onClick={() => void handleStart()}
+                  disabled={isRunning || parsedHosts.length === 0}
+                  className="btn-primary max-w-xs"
+                >
+                  {isRunning ? (
+                    <span className="flex items-center gap-2">
+                      <span className="inline-flex h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                      Debugging...
+                    </span>
+                  ) : (
+                    "Start Debugging"
+                  )}
+                </button>
+              </section>
+            </>
+          )}
 
           {activeDebugId && (
             <section className="panel p-6">
@@ -350,19 +378,21 @@ export function PerformanceDebuggingPage() {
             </section>
           )}
 
-          <aside className="rounded-xl border border-amber-300 bg-amber-50 px-5 py-4 text-sm text-amber-950">
-            <p className="font-semibold">NOTE</p>
-            <p className="mt-1.5 leading-relaxed">
-              Before starting Performance Debugging, set up <strong>passwordless SSH</strong> from
-              the machine (or Docker host) running DevOps Open Agent to every target hostname.
-              The agent uses OpenSSH <code className="rounded bg-amber-100 px-1">BatchMode</code>{" "}
-              only — there is no password prompt or key upload in the UI. Use{" "}
-              <code className="rounded bg-amber-100 px-1">hostname</code> or{" "}
-              <code className="rounded bg-amber-100 px-1">user@host</code>. Docker Compose mounts{" "}
-              <code className="rounded bg-amber-100 px-1">~/.ssh</code> into the backend container
-              read-only.
-            </p>
-          </aside>
+          {!isViewOnly && (
+            <aside className="rounded-xl border border-amber-300 bg-amber-50 px-5 py-4 text-sm text-amber-950">
+              <p className="font-semibold">NOTE</p>
+              <p className="mt-1.5 leading-relaxed">
+                Before starting Performance Debugging, set up <strong>passwordless SSH</strong> from
+                the machine (or Docker host) running DevOps Open Agent to every target hostname.
+                The agent uses OpenSSH <code className="rounded bg-amber-100 px-1">BatchMode</code>{" "}
+                only — there is no password prompt or key upload in the UI. Use{" "}
+                <code className="rounded bg-amber-100 px-1">hostname</code> or{" "}
+                <code className="rounded bg-amber-100 px-1">user@host</code>. Docker Compose mounts{" "}
+                <code className="rounded bg-amber-100 px-1">~/.ssh</code> into the backend container
+                read-only.
+              </p>
+            </aside>
+          )}
         </div>
       </AppShell>
     </RequireAuth>

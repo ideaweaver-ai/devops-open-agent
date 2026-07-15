@@ -91,3 +91,17 @@ class SecurityScanDetailResponse(SecurityScanStatusResponse):
     created_at: str | None = None
     updated_at: str | None = None
     result: ScanResult | None = None
+
+
+class SecurityScanHistoryItem(BaseModel):
+    scan_id: str
+    scan_type: str
+    target: str
+    status: ScanJobStatus = "queued"
+    vulnerability_count: int = 0
+    misconfiguration_count: int = 0
+    created_at: str | None = None
+
+
+class SecurityScanHistoryResponse(BaseModel):
+    scans: list[SecurityScanHistoryItem] = Field(default_factory=list)

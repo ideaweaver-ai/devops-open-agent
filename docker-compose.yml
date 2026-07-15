@@ -39,6 +39,8 @@ services:
       - ${HOME}/.aws:/root/.aws:ro
       - ${HOME}/.ssh:/root/.ssh:ro
       - backend-data:/app/data
+      - trivy-cache:/root/.cache/trivy
+      - /var/run/docker.sock:/var/run/docker.sock
     env_file:
       - backend/.env
     environment:
@@ -87,3 +89,4 @@ volumes:
   backend-data:
   postgres-data:
   qdrant-data:
+  trivy-cache:

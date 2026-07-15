@@ -352,7 +352,7 @@ export function McpIntegrationPage() {
 
             <div>
               <label className="mb-2 block text-sm font-medium text-slate-300">
-                API key (optional)
+                API key{selectedOfficial?.auth_hint ? " (required)" : " (optional)"}
               </label>
               <input
                 type="password"
@@ -361,13 +361,19 @@ export function McpIntegrationPage() {
                 placeholder={
                   settings?.api_key_configured
                     ? `Configured ${settings.api_key_preview ?? ""}`
-                    : "Bearer token for authenticated MCP servers"
+                    : selectedOfficial?.auth_hint
+                      ? `Paste your ${selectedOfficial.auth_hint}`
+                      : "Bearer token for authenticated MCP servers"
                 }
                 className="w-full rounded-xl border border-white/[0.08] bg-slate-900/70 px-4 py-3 font-mono text-sm text-white outline-none focus:border-brand-500/40"
               />
               <p className="mt-2 text-xs text-slate-500">
                 Sent as <span className="font-mono text-slate-400">Authorization: Bearer …</span>.
-                Leave blank to keep the existing key.
+                {settings?.api_key_configured
+                  ? " Leave blank to keep the existing key. Enter a new value to replace it."
+                  : selectedOfficial?.auth_hint
+                    ? ` Required for ${selectedOfficial.name}.`
+                    : ""}
               </p>
             </div>
           </div>

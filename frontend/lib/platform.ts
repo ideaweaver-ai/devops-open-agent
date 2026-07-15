@@ -108,7 +108,10 @@ export const PLATFORM_AGENTS: PlatformAgent[] = [
     href: "/performance",
     description: "Debug Linux host performance over passwordless SSH.",
     available: true,
-    nav: [{ href: "/performance", label: "Debug" }],
+    nav: [
+      { href: "/performance", label: "Debug" },
+      { href: "/performance/investigations", label: "Investigations" },
+    ],
     matchesPath: (pathname) => pathname.startsWith("/performance"),
   },
   {
@@ -117,7 +120,10 @@ export const PLATFORM_AGENTS: PlatformAgent[] = [
     href: "/security",
     description: "Scan container images and Kubernetes clusters for vulnerabilities.",
     available: true,
-    nav: [{ href: "/security", label: "Scan" }],
+    nav: [
+      { href: "/security", label: "Scan" },
+      { href: "/security/investigations", label: "Investigations" },
+    ],
     matchesPath: (pathname) => pathname.startsWith("/security"),
   },
 ];

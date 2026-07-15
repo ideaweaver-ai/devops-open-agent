@@ -9,6 +9,8 @@ from app.models.auth import UserResponse
 from app.modules.security.models import (
     ScanType,
     SecurityScanDetailResponse,
+    SecurityScanHistoryItem,
+    SecurityScanHistoryResponse,
     SecurityScanRequest,
     SecurityScanStartResponse,
     SecurityScanStatusResponse,
@@ -19,6 +21,31 @@ from app.modules.security.store import get_security_scan_store
 
 router = APIRouter(tags=["security"])
 scan_service = SecurityScanService()
+
+
+@router.get("/security/scan", response_model=SecurityScanHistoryResponse)
+async def list_security_scans(
+    _current_user: UserResponse = Depends(get_current_user),
+) -> SecurityScanHistoryResponse:
+    store = get_security_scan_store()
+    records = await store.list_all()
+    items = []
+    for record in records:
+        result = record.get("result") or {}
+        vulns = result.get("vulnerabilities") or []
+        misconfigs = result.get("misconfigurations") or []
+        items.append(
+            SecurityScanHistoryItem(
+                scan_id=record["scan_id"],
+                scan_type=record.get("scan_type", "image"),
+                target=record.get("target", ""),
+                status=record["status"],
+                vulnerability_count=len(vulns),
+                misconfiguration_count=len(misconfigs),
+                created_at=record.get("created_at"),
+            )
+        )
+    return SecurityScanHistoryResponse(scans=items)
 
 
 @router.post("/security/scan", response_model=SecurityScanStartResponse)

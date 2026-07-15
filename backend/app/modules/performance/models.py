@@ -92,3 +92,16 @@ class PerformanceDebugDetailResponse(PerformanceDebugStatusResponse):
     created_at: str | None = None
     updated_at: str | None = None
     overall_summary: str | None = None
+
+
+class PerformanceDebugHistoryItem(BaseModel):
+    debug_id: str
+    status: JobStatus
+    host_count: int = 0
+    hosts_summary: str = ""
+    overall_summary: str | None = None
+    created_at: str | None = None
+
+
+class PerformanceDebugHistoryResponse(BaseModel):
+    jobs: list[PerformanceDebugHistoryItem] = Field(default_factory=list)

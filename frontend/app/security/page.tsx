@@ -1,3 +1,12 @@
-import SecurityScanningRoute from "@/modules/security/SecurityScanningPage";
+"use client";
 
-export default SecurityScanningRoute;
+import { Suspense } from "react";
+import { SecurityScanningPage } from "@/modules/security/SecurityScanningPage";
+
+export default function SecurityRoute() {
+  return (
+    <Suspense>
+      <SecurityScanningPage />
+    </Suspense>
+  );
+}
