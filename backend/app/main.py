@@ -25,6 +25,7 @@ from app.modules.aws.router import router as aws_v1
 from app.modules.cloud_cost_detector.api.routes import router as cloud_cost_v1
 from app.modules.performance.api.routes import router as performance_v1
 from app.modules.pr_reviewer.api.routes import router as pr_reviewer_v1
+from app.modules.security.api.routes import router as security_v1
 from app.services.investigation_job_service import InvestigationJobService
 from app.services.schedule_runner import schedule_runner
 from app.storage.factory import get_pr_review_store
@@ -101,6 +102,7 @@ def create_app() -> FastAPI:
     app.include_router(cloud_cost_v1, prefix="/api/v1")
     app.include_router(pr_reviewer_v1, prefix="/api/v1")
     app.include_router(performance_v1, prefix="/api/v1")
+    app.include_router(security_v1, prefix="/api/v1")
     app.include_router(integrations_v1.router, prefix="/api/v1")
     app.include_router(kubernetes_schedules_v1.router, prefix="/api/v1")
 

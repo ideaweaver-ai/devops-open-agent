@@ -16,6 +16,14 @@ RUN apt-get update \
     && curl -fsSLo /usr/local/bin/kubectl \
         "https://dl.k8s.io/release/$(curl -fsSL https://dl.k8s.io/release/stable.txt)/bin/linux/${KUBECTL_ARCH}/kubectl" \
     && chmod +x /usr/local/bin/kubectl \
+    && TRIVY_VERSION=$(curl -fsSL https://api.github.com/repos/aquasecurity/trivy/releases/latest | grep '"tag_name"' | sed -E 's/.*"v([^"]+)".*/\1/') \
+    && case "$KUBECTL_ARCH" in \
+        amd64) TRIVY_ARCH=Linux-64bit ;; \
+        arm64) TRIVY_ARCH=Linux-ARM64 ;; \
+       esac \
+    && curl -fsSL "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_${TRIVY_ARCH}.tar.gz" \
+       | tar -xzf - -C /usr/local/bin trivy \
+    && chmod +x /usr/local/bin/trivy \
     && apt-get purge -y curl \
     && apt-get autoremove -y \
     && rm -rf /var/lib/apt/lists/*

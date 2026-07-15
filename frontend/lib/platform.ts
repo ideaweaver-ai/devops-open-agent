@@ -111,6 +111,15 @@ export const PLATFORM_AGENTS: PlatformAgent[] = [
     nav: [{ href: "/performance", label: "Debug" }],
     matchesPath: (pathname) => pathname.startsWith("/performance"),
   },
+  {
+    id: "security",
+    name: "Security Scanning",
+    href: "/security",
+    description: "Scan container images and Kubernetes clusters for vulnerabilities.",
+    available: true,
+    nav: [{ href: "/security", label: "Scan" }],
+    matchesPath: (pathname) => pathname.startsWith("/security"),
+  },
 ];
 
 export function getActiveAgent(pathname: string): PlatformAgent {
@@ -143,6 +152,8 @@ export function formatAgentType(agentType?: string | null): string {
       return "PR Reviewer";
     case "performance":
       return "Performance Debugging";
+    case "security":
+      return "Security Scanning";
     case "kubernetes":
       return "Kubernetes";
     default:

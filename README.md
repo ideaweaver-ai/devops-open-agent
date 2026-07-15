@@ -21,6 +21,7 @@
 | **Cloud Cost Detector** | Find unused and underutilized AWS resources |
 | **PR Reviewer** | AI DevOps review for GitHub pull requests |
 | **Performance Debugging** | Debug Linux host performance over passwordless SSH — CPU, memory, disk, and network + AI analysis |
+| **Security Scanning** | Scan container images and Kubernetes clusters for vulnerabilities and misconfigurations using **Trivy**, with AI-prioritized remediation |
 | **Integrations** | **Slack**, **Microsoft Teams**, **PagerDuty**, **MCP**, and **Qdrant (RAG)** — notifications, on-call incidents, external tool servers, and investigation memory |
 
 ## Demo Video
@@ -52,9 +53,135 @@ The demo covers:
 
 Supported LLM providers: OpenAI, Anthropic, OpenRouter, Google Gemini, Ollama — see [LLM Supported](#llm-supported).
 
+## Quick Install
+
+For **local development** (localhost). On a new remote host, use [New host checklist](#new-host-checklist) instead.
+
+```bash
+chmod +x install.sh
+./install.sh
+```
+
+Custom admin password:
+
+```bash
+./install.sh --admin-pass 'MySecurePass123'
+```
+
+Configure only (no Docker build):
+
+```bash
+./install.sh --skip-build
+```
+
+The installer will:
+
+1. Verify Docker and Compose
+2. Create `backend/.env` from `backend/.env.example` if missing
+3. Set default username `admin` and password
+4. Generate a random `JWT_SECRET`
+5. Build and start all services with Docker Compose
+
+## Default Login
+
+| Field | Value |
+|-------|-------|
+| Username | `admin` |
+| Password | `admin123` (or value passed to `--admin-pass`) |
+
+Sign in at [http://<your ip>:3000/login](http://<your_ip>:3000/login).
+
+Change the password in `backend/.env` before production:
+
+```env
+DEFAULT_ADMIN_PASSWORD=your-secure-password
+```
+
+Then restart:
+
+```bash
+docker compose up -d --force-recreate backend
+```
+
+> **Note:** If an older install already created `admin@example.com`, delete the Postgres volume or sign up a new user. Fresh installs use username `admin`.
+
+### Authentication today and roadmap
+
+DevOps Open Agent currently uses **self-hosted username/password auth**:
+
+- Passwords stored as **bcrypt** hashes in PostgreSQL
+- Successful login/signup returns a signed **JWT** bearer token
+- Protected APIs require `Authorization: Bearer <token>`
+
+**Roadmap:** OAuth and integration with external identity providers (for example Google, GitHub, and enterprise SSO/IdP options) are planned so teams can use their existing identity stack instead of only local accounts.
+
+## Prerequisites
+
+- macOS or Linux
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (macOS) or Docker Engine + Compose (Linux)
+- Optional: [Ollama](https://ollama.com/) for local AI
+- Optional: `~/.kube/config` for Kubernetes investigations
+- Optional: `~/.aws/credentials` for AWS and Cloud Cost modules
+- Optional: GitHub token for PR Reviewer
+- Optional: passwordless SSH (`~/.ssh`) for Performance Debugging
+
+### Ubuntu one-line installs
+
+Use these commands on Ubuntu to install common dependencies before running `./install.sh`.
+
+**Docker**
+
+```bash
+curl -fsSL https://get.docker.com | sudo sh
+```
+
+After install, add your user to the Docker group (log out/in or reboot afterward):
+
+```bash
+sudo usermod -aG docker "$USER"
+```
+
+**Ollama (local LLM)**
+
+```bash
+curl -fsSL https://ollama.com/install.sh | sh
+```
+
+Pull a model (example used by default in `backend/.env.example`):
+
+```bash
+ollama pull gemma4:e4b
+```
+
+**Kind (local Kubernetes cluster)**
+
+```bash
+curl -Lo ./kind https://kind.sigs.k8s.io/dl/latest/kind-linux-amd64 && chmod +x ./kind && sudo mv ./kind /usr/local/bin/kind
+```
+
+**AWS CLI v2**
+
+```bash
+sudo apt update && sudo apt install -y python3 python3-pip curl unzip && curl "https://awscli.amazonaws.com/awscli-exe-linux-$(uname -m).zip" -o awscliv2.zip && unzip -q awscliv2.zip && sudo ./aws/install
+```
+
+Configure credentials:
+
+```bash
+aws configure
+```
+
+**kubectl**
+
+```bash
+curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" && chmod +x kubectl && sudo mv kubectl /usr/local/bin/
+```
+
+> **Note:** The Kind and kubectl commands above target `linux/amd64`. On ARM64 Ubuntu, replace `amd64` with `arm64` in the download URLs.
+
 ## LLM Supported
 
-All agent modules (Kubernetes, AWS, Cloud Cost, PR Reviewer, Performance Debugging) use a **shared LLM layer**.  
+All agent modules (Kubernetes, AWS, Cloud Cost, PR Reviewer, Performance Debugging, Security Scanning) use a **shared LLM layer**.  
 Configure one provider in `backend/.env` — every investigation, diagnosis, and PR review uses it. Kubernetes investigations can optionally use a **separate provider/model for LLM-as-a-Judge** verification (see [LLM-as-a-Judge](#llm-as-a-judge-ai-verification)).
 
 ![LLM provider architecture — DevOps Open Agent to Ollama, OpenAI, Anthropic, OpenRouter, and Google Gemini](img/llm-provider-diagram.png?v=gemini)
@@ -426,12 +553,45 @@ Collect Linux performance signals from remote hosts over **passwordless SSH**, t
 
 Remediation suggestions are **advice only** — the agent does not run `kill`, `sysctl`, or other changes on your hosts.
 
+## Security Scanning (Trivy)
+
+Scan **container images** and **Kubernetes clusters** for vulnerabilities and misconfigurations using [Trivy](https://github.com/aquasecurity/trivy), with optional AI analysis to prioritize findings and suggest remediation.
+
+**UI:** Security Scanning → **Scan** (`/security`)
+
+| Scan type | What Trivy checks |
+|-----------|-------------------|
+| **Container Image** | OS packages, language-specific dependencies, known CVEs |
+| **Kubernetes Cluster** | Workload misconfigurations, image vulnerabilities across the cluster |
+
+**Features**
+
+- Severity filter (CRITICAL / HIGH / MEDIUM / LOW / UNKNOWN)
+- Sortable vulnerability and misconfiguration tables
+- Summary cards showing counts per severity level
+- Optional AI analysis: the configured LLM prioritizes findings by exploitability and blast radius, groups related vulnerabilities, and suggests concrete remediation steps
+- LLM provider badge on the AI analysis panel
+
+**Requirements**
+
+- Trivy is **bundled in the Docker image** — no separate install needed
+- Container image scans pull the image inside the backend container (Docker-in-Docker or socket mount may be needed for private registries)
+- Kubernetes cluster scans reuse the same kubeconfig as the Kubernetes Debugging agent
+
+**API** (authenticated):
+
+| Method | Endpoint |
+|--------|----------|
+| `POST` | `/api/v1/security/scan` |
+| `GET` | `/api/v1/security/scan/{id}/status` |
+| `GET` | `/api/v1/security/scan/{id}` |
+
 ## LLM-as-a-Judge (AI Verification)
 
 Add a **second AI** to verify the primary diagnosis. When enabled, a separate LLM reviews the diagnosis for factual consistency, evidence grounding, command safety, and completeness — then produces an advisory verdict displayed alongside the original diagnosis.
 
 <p align="center">
-  <img src="img/product-tour/16-llm-as-a-judge.png" alt="LLM-as-a-Judge — configure a second AI provider and model to verify the primary diagnosis" width="100%" />
+  <img src="img/product-tour/17-llm-as-a-judge.png" alt="LLM-as-a-Judge — configure a second AI provider and model to verify the primary diagnosis" width="100%" />
 </p>
 
 **How it works**
@@ -549,7 +709,7 @@ Regenerate the AWS services diagram: `python3 scripts/build_aws_services_diagram
 
 ## Architecture
 
-Application request flow: the browser talks to the Next.js frontend, which calls the FastAPI backend. The API routes requests to agent modules (Kubernetes, AWS, Cloud Cost, PR Reviewer, Performance Debugging), each using a shared AI layer and persisting results to SQLite or PostgreSQL. Kubernetes investigations can optionally run **LLM-as-a-Judge** verification using a separate provider/model. **Proactive schedules** trigger Kubernetes investigations via APScheduler; completed AI recommendations can flow to **Slack**, **Microsoft Teams**, and **PagerDuty** with configurable per-user cooldowns.
+Application request flow: the browser talks to the Next.js frontend, which calls the FastAPI backend. The API routes requests to agent modules (Kubernetes, AWS, Cloud Cost, PR Reviewer, Performance Debugging, Security Scanning), each using a shared AI layer and persisting results to SQLite or PostgreSQL. Kubernetes investigations can optionally run **LLM-as-a-Judge** verification using a separate provider/model. **Proactive schedules** trigger Kubernetes investigations via APScheduler; completed AI recommendations can flow to **Slack**, **Microsoft Teams**, and **PagerDuty** with configurable per-user cooldowns.
 
 ![Application request flow](img/application-request-flow.png)
 
@@ -693,79 +853,23 @@ Enter hostnames (or upload a host list), collect Linux metrics over passwordless
   <img src="img/product-tour/15-performance-debugging.png" alt="Performance Debugging agent" width="100%" />
 </p>
 
-### 16. LLM-as-a-Judge
+### 16. Security Scanning
+
+Scan container images and Kubernetes clusters for vulnerabilities and misconfigurations with Trivy. View severity summary cards, sortable findings tables, and AI-prioritized remediation. See [Security Scanning](#security-scanning-trivy).
+
+<p align="center">
+  <img src="img/product-tour/16-security-scanning.png" alt="Security Scanning — Trivy container image and Kubernetes cluster scan with AI analysis" width="100%" />
+</p>
+
+### 17. LLM-as-a-Judge
 
 Enable a second AI to verify the primary diagnosis. Pick a different provider and model inline — the judge evaluates factual consistency, evidence grounding, command safety, and completeness. See [LLM-as-a-Judge](#llm-as-a-judge-ai-verification).
 
 <p align="center">
-  <img src="img/product-tour/16-llm-as-a-judge.png" alt="LLM-as-a-Judge — configure a second AI provider and model to verify the primary Kubernetes diagnosis" width="100%" />
+  <img src="img/product-tour/17-llm-as-a-judge.png" alt="LLM-as-a-Judge — configure a second AI provider and model to verify the primary Kubernetes diagnosis" width="100%" />
 </p>
 
 You can also [download the product tour as a PDF](docs/devops-open-agent-product-tour.pdf).
-
-## Prerequisites
-
-- macOS or Linux
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (macOS) or Docker Engine + Compose (Linux)
-- Optional: [Ollama](https://ollama.com/) for local AI
-- Optional: `~/.kube/config` for Kubernetes investigations
-- Optional: `~/.aws/credentials` for AWS and Cloud Cost modules
-- Optional: GitHub token for PR Reviewer
-- Optional: passwordless SSH (`~/.ssh`) for Performance Debugging
-
-### Ubuntu one-line installs
-
-Use these commands on Ubuntu to install common dependencies before running `./install.sh`.
-
-**Docker**
-
-```bash
-curl -fsSL https://get.docker.com | sudo sh
-```
-
-After install, add your user to the Docker group (log out/in or reboot afterward):
-
-```bash
-sudo usermod -aG docker "$USER"
-```
-
-**Ollama (local LLM)**
-
-```bash
-curl -fsSL https://ollama.com/install.sh | sh
-```
-
-Pull a model (example used by default in `backend/.env.example`):
-
-```bash
-ollama pull gemma4:e4b
-```
-
-**Kind (local Kubernetes cluster)**
-
-```bash
-curl -Lo ./kind https://kind.sigs.k8s.io/dl/latest/kind-linux-amd64 && chmod +x ./kind && sudo mv ./kind /usr/local/bin/kind
-```
-
-**AWS CLI v2**
-
-```bash
-sudo apt update && sudo apt install -y python3 python3-pip curl unzip && curl "https://awscli.amazonaws.com/awscli-exe-linux-$(uname -m).zip" -o awscliv2.zip && unzip -q awscliv2.zip && sudo ./aws/install
-```
-
-Configure credentials:
-
-```bash
-aws configure
-```
-
-**kubectl**
-
-```bash
-curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" && chmod +x kubectl && sudo mv kubectl /usr/local/bin/
-```
-
-> **Note:** The Kind and kubectl commands above target `linux/amd64`. On ARM64 Ubuntu, replace `amd64` with `arm64` in the download URLs.
 
 ## New host checklist
 
@@ -885,68 +989,6 @@ See [Kubernetes on Docker / AWS](#kubernetes-on-docker--aws) if cluster checks f
 | Login fails from browser | [Remote / AWS deployment](#remote--aws-deployment) |
 | `config profile () could not be found` | [AWS on EC2 / Docker](#aws-on-ec2--docker) |
 | Kubernetes cluster missing in UI | [Kubernetes on Docker / AWS](#kubernetes-on-docker--aws) |
-
-## Quick Install
-
-For **local development** (localhost). On a new remote host, use [New host checklist](#new-host-checklist) instead.
-
-```bash
-chmod +x install.sh
-./install.sh
-```
-
-Custom admin password:
-
-```bash
-./install.sh --admin-pass 'MySecurePass123'
-```
-
-Configure only (no Docker build):
-
-```bash
-./install.sh --skip-build
-```
-
-The installer will:
-
-1. Verify Docker and Compose
-2. Create `backend/.env` from `backend/.env.example` if missing
-3. Set default username `admin` and password
-4. Generate a random `JWT_SECRET`
-5. Build and start all services with Docker Compose
-
-## Default Login
-
-| Field | Value |
-|-------|-------|
-| Username | `admin` |
-| Password | `admin123` (or value passed to `--admin-pass`) |
-
-Sign in at [http://<your ip>:3000/login](http://<your_ip>:3000/login).
-
-Change the password in `backend/.env` before production:
-
-```env
-DEFAULT_ADMIN_PASSWORD=your-secure-password
-```
-
-Then restart:
-
-```bash
-docker compose up -d --force-recreate backend
-```
-
-> **Note:** If an older install already created `admin@example.com`, delete the Postgres volume or sign up a new user. Fresh installs use username `admin`.
-
-### Authentication today and roadmap
-
-DevOps Open Agent currently uses **self-hosted username/password auth**:
-
-- Passwords stored as **bcrypt** hashes in PostgreSQL
-- Successful login/signup returns a signed **JWT** bearer token
-- Protected APIs require `Authorization: Bearer <token>`
-
-**Roadmap:** OAuth and integration with external identity providers (for example Google, GitHub, and enterprise SSO/IdP options) are planned so teams can use their existing identity stack instead of only local accounts.
 
 ## Manual Setup
 
@@ -1190,7 +1232,7 @@ AWS_DEFAULT_REGION=us-west-2
 open-devops-agent/
 ├── backend/              # FastAPI application
 │   └── app/
-│       ├── modules/      # Agent modules (aws, cloud_cost, pr_reviewer, ...)
+│       ├── modules/      # Agent modules (aws, cloud_cost, pr_reviewer, security, ...)
 │       ├── ai/           # Shared LLM providers + LLM-as-a-Judge
 │       ├── notifications/# Slack, Teams & PagerDuty delivery + cooldown
 │       ├── services/     # Investigation jobs, schedules, integration settings
