@@ -89,7 +89,7 @@ The installer will:
 | Username | `admin` |
 | Password | `admin123` (or value passed to `--admin-pass`) |
 
-Sign in at [http://<your ip>:3000/login](http://<your_ip>:3000/login).
+Sign in at [http://localhost:3000/login](http://localhost:3000/login).
 
 Change the password in `backend/.env` before production:
 
