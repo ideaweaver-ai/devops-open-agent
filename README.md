@@ -26,15 +26,15 @@
 
 ## Demo Video
 
-Watch a full walkthrough of DevOps Open Agent — how the platform works across all four agents, AI root cause analysis, and Slack, Microsoft Teams, and PagerDuty integrations.
+Watch a full walkthrough of DevOps Open Agent v2 — how the platform works across all six agents, AI root cause analysis, and Slack, Microsoft Teams, and PagerDuty integrations.
 
 <p align="center">
-  <a href="https://youtu.be/3VT8MeSLt5s">
-    <img src="https://img.youtube.com/vi/3VT8MeSLt5s/hqdefault.jpg" alt="DevOps Open Agent demo video" width="640" />
+  <a href="https://youtu.be/9HjWLyoHdng">
+    <img src="https://img.youtube.com/vi/9HjWLyoHdng/hqdefault.jpg" alt="DevOps Open Agent v2 demo video" width="640" />
   </a>
 </p>
 
-**[▶ Watch on YouTube](https://youtu.be/3VT8MeSLt5s)**
+**[▶ Watch on YouTube](https://youtu.be/9HjWLyoHdng)**
 
 The demo covers:
 
