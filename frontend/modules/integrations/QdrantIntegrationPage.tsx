@@ -26,6 +26,8 @@ const AGENT_TOGGLES = [
   { key: "use_kubernetes" as const, label: "Kubernetes Debugging Agent" },
   { key: "use_aws" as const, label: "AWS DevOps Agent" },
   { key: "use_cloud_cost" as const, label: "Cloud Cost Detector" },
+  { key: "use_performance" as const, label: "Performance Debugging" },
+  { key: "use_security" as const, label: "Security Scanning" },
 ];
 
 function buildFormState(
@@ -38,6 +40,8 @@ function buildFormState(
     use_kubernetes: settings?.use_kubernetes ?? true,
     use_aws: settings?.use_aws ?? true,
     use_cloud_cost: settings?.use_cloud_cost ?? true,
+    use_performance: settings?.use_performance ?? true,
+    use_security: settings?.use_security ?? true,
   };
 }
 

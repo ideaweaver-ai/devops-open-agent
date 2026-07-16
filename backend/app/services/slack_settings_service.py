@@ -44,6 +44,8 @@ class SlackSettingsService:
             notify_aws=row.notify_aws if row else True,
             notify_cloud_cost=row.notify_cloud_cost if row else True,
             notify_pr_reviewer=row.notify_pr_reviewer if row else True,
+            notify_performance=row.notify_performance if row else True,
+            notify_security=row.notify_security if row else True,
             instance_bot_configured=bool(self.settings.slack_bot_token.strip()),
             instance_webhook_configured=bool(self.settings.slack_instance_webhook_url.strip()),
         )
@@ -66,6 +68,8 @@ class SlackSettingsService:
         row.notify_aws = payload.notify_aws
         row.notify_cloud_cost = payload.notify_cloud_cost
         row.notify_pr_reviewer = payload.notify_pr_reviewer
+        row.notify_performance = payload.notify_performance
+        row.notify_security = payload.notify_security
 
         if payload.webhook_url is not None and payload.webhook_url.strip():
             row.webhook_url = payload.webhook_url.strip()
@@ -119,6 +123,10 @@ class SlackSettingsService:
             return row.notify_cloud_cost
         if normalized in {"pr_reviewer", "pr-reviewer"}:
             return row.notify_pr_reviewer
+        if normalized == "performance":
+            return row.notify_performance
+        if normalized == "security":
+            return row.notify_security
         return True
 
     @staticmethod

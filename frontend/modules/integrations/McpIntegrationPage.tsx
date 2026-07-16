@@ -10,6 +10,8 @@ const AGENT_TOGGLES = [
   { key: "use_aws" as const, label: "AWS DevOps Agent" },
   { key: "use_cloud_cost" as const, label: "Cloud Cost Detector" },
   { key: "use_pr_reviewer" as const, label: "PR Reviewer" },
+  { key: "use_performance" as const, label: "Performance Debugging" },
+  { key: "use_security" as const, label: "Security Scanning" },
 ];
 
 function getErrorMessage(error: unknown): string {
@@ -59,6 +61,8 @@ function buildFormState(
     use_aws: settings?.use_aws ?? true,
     use_cloud_cost: settings?.use_cloud_cost ?? true,
     use_pr_reviewer: settings?.use_pr_reviewer ?? true,
+    use_performance: settings?.use_performance ?? true,
+    use_security: settings?.use_security ?? true,
   };
 }
 

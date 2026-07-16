@@ -54,6 +54,8 @@ class QdrantSettingsService:
             use_kubernetes=row.use_kubernetes if row else True,
             use_aws=row.use_aws if row else True,
             use_cloud_cost=row.use_cloud_cost if row else True,
+            use_performance=row.use_performance if row else True,
+            use_security=row.use_security if row else True,
             instance_url_configured=bool(self.settings.qdrant_instance_url.strip()),
             embedding_provider=provider,
             embedding_model=resolve_embedding_model(self.settings, provider),
@@ -75,6 +77,8 @@ class QdrantSettingsService:
         row.use_kubernetes = payload.use_kubernetes
         row.use_aws = payload.use_aws
         row.use_cloud_cost = payload.use_cloud_cost
+        row.use_performance = payload.use_performance
+        row.use_security = payload.use_security
 
         if payload.collection is not None:
             row.collection = payload.collection.strip() or None
@@ -125,6 +129,10 @@ class QdrantSettingsService:
             return row.use_aws
         if normalized == "cloud_cost":
             return row.use_cloud_cost
+        if normalized == "performance":
+            return row.use_performance
+        if normalized == "security":
+            return row.use_security
         return True
 
     @staticmethod

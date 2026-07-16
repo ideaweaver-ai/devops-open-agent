@@ -6,6 +6,8 @@ export interface PagerDutyIntegrationSettings {
   notify_aws: boolean;
   notify_cloud_cost: boolean;
   notify_pr_reviewer: boolean;
+  notify_performance: boolean;
+  notify_security: boolean;
 }
 
 export interface PagerDutyIntegrationResponse {
@@ -18,6 +20,8 @@ export interface PagerDutyIntegrationResponse {
   notify_aws: boolean;
   notify_cloud_cost: boolean;
   notify_pr_reviewer: boolean;
+  notify_performance: boolean;
+  notify_security: boolean;
   instance_routing_key_configured: boolean;
 }
 

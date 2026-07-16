@@ -5,6 +5,8 @@ export interface TeamsIntegrationSettings {
   notify_aws: boolean;
   notify_cloud_cost: boolean;
   notify_pr_reviewer: boolean;
+  notify_performance: boolean;
+  notify_security: boolean;
 }
 
 export interface TeamsIntegrationResponse {
@@ -15,6 +17,8 @@ export interface TeamsIntegrationResponse {
   notify_aws: boolean;
   notify_cloud_cost: boolean;
   notify_pr_reviewer: boolean;
+  notify_performance: boolean;
+  notify_security: boolean;
   instance_webhook_configured: boolean;
 }
 

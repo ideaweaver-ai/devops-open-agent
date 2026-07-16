@@ -41,6 +41,24 @@ async def init_auth_db() -> None:
                 """
             )
         )
+        for tbl in (
+            "user_slack_integrations",
+            "user_pagerduty_integrations",
+            "user_teams_integrations",
+        ):
+            for col in ("notify_performance", "notify_security"):
+                await connection.execute(
+                    text(
+                        f"ALTER TABLE {tbl} ADD COLUMN IF NOT EXISTS {col} BOOLEAN NOT NULL DEFAULT TRUE"
+                    )
+                )
+        for tbl in ("user_mcp_integrations", "user_qdrant_integrations"):
+            for col in ("use_performance", "use_security"):
+                await connection.execute(
+                    text(
+                        f"ALTER TABLE {tbl} ADD COLUMN IF NOT EXISTS {col} BOOLEAN NOT NULL DEFAULT TRUE"
+                    )
+                )
 
 
 async def check_auth_db() -> bool:

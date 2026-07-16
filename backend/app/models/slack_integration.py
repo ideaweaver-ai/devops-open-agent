@@ -22,6 +22,8 @@ class SlackIntegrationSettings(BaseModel):
     notify_aws: bool = True
     notify_cloud_cost: bool = True
     notify_pr_reviewer: bool = True
+    notify_performance: bool = True
+    notify_security: bool = True
 
 
 class SlackIntegrationResponse(BaseModel):
@@ -34,6 +36,8 @@ class SlackIntegrationResponse(BaseModel):
     notify_aws: bool
     notify_cloud_cost: bool
     notify_pr_reviewer: bool
+    notify_performance: bool
+    notify_security: bool
     instance_bot_configured: bool
     instance_webhook_configured: bool
 

@@ -16,6 +16,8 @@ class McpIntegrationSettings(BaseModel):
     use_aws: bool = True
     use_cloud_cost: bool = True
     use_pr_reviewer: bool = True
+    use_performance: bool = True
+    use_security: bool = True
 
 
 class McpWhitelistCreate(BaseModel):
@@ -57,6 +59,8 @@ class McpIntegrationResponse(BaseModel):
     use_aws: bool
     use_cloud_cost: bool
     use_pr_reviewer: bool
+    use_performance: bool
+    use_security: bool
     instance_server_configured: bool
     instance_url_restrictions_enabled: bool
     instance_allowed_urls: list[str] = Field(default_factory=list)

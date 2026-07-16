@@ -6,6 +6,8 @@ export interface QdrantIntegrationSettings {
   use_kubernetes: boolean;
   use_aws: boolean;
   use_cloud_cost: boolean;
+  use_performance: boolean;
+  use_security: boolean;
 }
 
 export interface QdrantIntegrationResponse {
@@ -17,6 +19,8 @@ export interface QdrantIntegrationResponse {
   use_kubernetes: boolean;
   use_aws: boolean;
   use_cloud_cost: boolean;
+  use_performance: boolean;
+  use_security: boolean;
   instance_url_configured: boolean;
   embedding_provider: string;
   embedding_model: string;

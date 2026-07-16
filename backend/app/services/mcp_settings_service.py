@@ -54,6 +54,8 @@ class McpSettingsService:
             use_aws=row.use_aws if row else True,
             use_cloud_cost=row.use_cloud_cost if row else True,
             use_pr_reviewer=row.use_pr_reviewer if row else True,
+            use_performance=row.use_performance if row else True,
+            use_security=row.use_security if row else True,
             instance_server_configured=bool(self.settings.mcp_instance_server_url.strip()),
             instance_url_restrictions_enabled=self.access_service.instance_url_restrictions_enabled,
             instance_allowed_urls=instance_allowed,
@@ -87,6 +89,8 @@ class McpSettingsService:
         row.use_aws = payload.use_aws
         row.use_cloud_cost = payload.use_cloud_cost
         row.use_pr_reviewer = payload.use_pr_reviewer
+        row.use_performance = payload.use_performance
+        row.use_security = payload.use_security
 
         if payload.api_key is not None and payload.api_key.strip():
             row.api_key = payload.api_key.strip()
@@ -150,6 +154,10 @@ class McpSettingsService:
             return row.use_cloud_cost
         if normalized in {"pr_reviewer", "pr-reviewer"}:
             return row.use_pr_reviewer
+        if normalized == "performance":
+            return row.use_performance
+        if normalized == "security":
+            return row.use_security
         return True
 
     @staticmethod

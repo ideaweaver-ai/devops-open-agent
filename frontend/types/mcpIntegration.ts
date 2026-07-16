@@ -6,6 +6,8 @@ export interface McpIntegrationSettings {
   use_aws: boolean;
   use_cloud_cost: boolean;
   use_pr_reviewer: boolean;
+  use_performance: boolean;
+  use_security: boolean;
 }
 
 export interface McpWhitelistEntry {
@@ -47,6 +49,8 @@ export interface McpIntegrationResponse {
   use_aws: boolean;
   use_cloud_cost: boolean;
   use_pr_reviewer: boolean;
+  use_performance: boolean;
+  use_security: boolean;
   instance_server_configured: boolean;
   instance_url_restrictions_enabled: boolean;
   instance_allowed_urls: string[];

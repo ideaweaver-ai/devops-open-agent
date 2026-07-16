@@ -51,6 +51,8 @@ class PagerDutySettingsService:
             notify_aws=row.notify_aws if row else True,
             notify_cloud_cost=row.notify_cloud_cost if row else True,
             notify_pr_reviewer=row.notify_pr_reviewer if row else True,
+            notify_performance=row.notify_performance if row else True,
+            notify_security=row.notify_security if row else True,
             instance_routing_key_configured=bool(
                 self.settings.pagerduty_instance_routing_key.strip()
             ),
@@ -73,6 +75,8 @@ class PagerDutySettingsService:
         row.notify_aws = payload.notify_aws
         row.notify_cloud_cost = payload.notify_cloud_cost
         row.notify_pr_reviewer = payload.notify_pr_reviewer
+        row.notify_performance = payload.notify_performance
+        row.notify_security = payload.notify_security
 
         if payload.routing_key is not None and payload.routing_key.strip():
             row.routing_key = payload.routing_key.strip()
@@ -115,6 +119,10 @@ class PagerDutySettingsService:
             return row.notify_cloud_cost
         if normalized in {"pr_reviewer", "pr-reviewer"}:
             return row.notify_pr_reviewer
+        if normalized == "performance":
+            return row.notify_performance
+        if normalized == "security":
+            return row.notify_security
         return True
 
     @staticmethod

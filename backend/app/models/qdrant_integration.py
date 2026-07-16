@@ -22,6 +22,8 @@ class QdrantIntegrationSettings(BaseModel):
     use_kubernetes: bool = True
     use_aws: bool = True
     use_cloud_cost: bool = True
+    use_performance: bool = True
+    use_security: bool = True
 
 
 class QdrantIntegrationResponse(BaseModel):
@@ -33,6 +35,8 @@ class QdrantIntegrationResponse(BaseModel):
     use_kubernetes: bool
     use_aws: bool
     use_cloud_cost: bool
+    use_performance: bool
+    use_security: bool
     instance_url_configured: bool
     embedding_provider: str
     embedding_model: str

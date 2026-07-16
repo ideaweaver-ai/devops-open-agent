@@ -12,6 +12,8 @@ const AGENT_TOGGLES = [
   { key: "notify_aws" as const, label: "AWS DevOps Agent" },
   { key: "notify_cloud_cost" as const, label: "Cloud Cost Detector" },
   { key: "notify_pr_reviewer" as const, label: "PR Reviewer" },
+  { key: "notify_performance" as const, label: "Performance Debugging" },
+  { key: "notify_security" as const, label: "Security Scanning" },
 ];
 
 function buildFormState(
@@ -25,6 +27,8 @@ function buildFormState(
     notify_aws: settings?.notify_aws ?? true,
     notify_cloud_cost: settings?.notify_cloud_cost ?? true,
     notify_pr_reviewer: settings?.notify_pr_reviewer ?? true,
+    notify_performance: settings?.notify_performance ?? true,
+    notify_security: settings?.notify_security ?? true,
   };
 }
 

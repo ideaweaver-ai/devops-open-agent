@@ -43,6 +43,8 @@ class UserSlackIntegration(Base):
     notify_aws: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     notify_cloud_cost: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     notify_pr_reviewer: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    notify_performance: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    notify_security: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
@@ -75,6 +77,8 @@ class UserPagerDutyIntegration(Base):
     notify_aws: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     notify_cloud_cost: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     notify_pr_reviewer: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    notify_performance: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    notify_security: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
@@ -104,6 +108,8 @@ class UserTeamsIntegration(Base):
     notify_aws: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     notify_cloud_cost: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     notify_pr_reviewer: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    notify_performance: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    notify_security: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
@@ -134,6 +140,8 @@ class UserMcpIntegration(Base):
     use_aws: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     use_cloud_cost: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     use_pr_reviewer: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    use_performance: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    use_security: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
@@ -202,6 +210,8 @@ class UserQdrantIntegration(Base):
     use_kubernetes: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     use_aws: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     use_cloud_cost: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    use_performance: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    use_security: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
