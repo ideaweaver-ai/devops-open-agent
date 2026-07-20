@@ -4,10 +4,12 @@ from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
 from datetime import datetime, timezone
+from uuid import UUID
 
 from loguru import logger
 
 from app.core.errors import sanitize_error_message
+from app.modules.aws.client import AwsClientFactory
 from app.modules.aws.collectors import (
     AwsCloudTrailCollector,
     AwsCloudWatchCollector,
@@ -52,11 +54,31 @@ AWS_STEP_PROGRESS = {
     "Security Groups": 42,
     "Load Balancers": 50,
     "Topology": 58,
-    "CloudWatch": 68,
-    "CloudTrail": 78,
+    "CloudWatch": 66,
+    "CloudTrail": 74,
     "AWS Config": 86,
     "AI Diagnosis": 100,
 }
+
+
+class _AwsScopedCollectors:
+    """Discovery/collectors bound to one AwsClientFactory (hub or assumed)."""
+
+    def __init__(self, factory: AwsClientFactory) -> None:
+        self.factory = factory
+        self.account_discovery = AwsAccountDiscovery(factory)
+        self.ec2_discovery = AwsEc2Discovery(factory)
+        self.lambda_discovery = AwsLambdaDiscovery(factory)
+        self.s3_discovery = AwsS3Discovery(factory)
+        self.vpc_discovery = AwsVpcDiscovery(factory)
+        self.security_group_discovery = AwsSecurityGroupDiscovery(factory)
+        self.load_balancer_discovery = AwsLoadBalancerDiscovery(factory)
+        self.autoscaling_discovery = AwsAutoScalingDiscovery(factory)
+        self.cloudwatch_collector = AwsCloudWatchCollector(factory)
+        self.cloudtrail_collector = AwsCloudTrailCollector(factory)
+        self.config_collector = AwsConfigCollector(factory)
+        self.deployment_correlation_collector = AwsDeploymentCorrelationCollector()
+        self.topology_builder = AwsTopologyBuilder()
 
 
 class AWSInvestigationService:
@@ -64,18 +86,6 @@ class AWSInvestigationService:
 
     def __init__(self) -> None:
         self.account_discovery = AwsAccountDiscovery()
-        self.ec2_discovery = AwsEc2Discovery()
-        self.lambda_discovery = AwsLambdaDiscovery()
-        self.s3_discovery = AwsS3Discovery()
-        self.vpc_discovery = AwsVpcDiscovery()
-        self.security_group_discovery = AwsSecurityGroupDiscovery()
-        self.load_balancer_discovery = AwsLoadBalancerDiscovery()
-        self.autoscaling_discovery = AwsAutoScalingDiscovery()
-        self.cloudwatch_collector = AwsCloudWatchCollector()
-        self.cloudtrail_collector = AwsCloudTrailCollector()
-        self.config_collector = AwsConfigCollector()
-        self.deployment_correlation_collector = AwsDeploymentCorrelationCollector()
-        self.topology_builder = AwsTopologyBuilder()
         self.root_cause_analyzer = AwsRootCauseAnalyzer()
 
     async def _report_progress(
@@ -90,38 +100,61 @@ class AWSInvestigationService:
         if result is not None:
             await result
 
-    async def list_accounts(self, region: str | None = None) -> list:
+    async def list_accounts(
+        self,
+        region: str | None = None,
+        user_id: str | UUID | None = None,
+    ) -> list:
         target_region = region or "us-east-1"
-        return await self.account_discovery.list_accounts(target_region)
+        return await self.account_discovery.list_accounts(target_region, user_id=user_id)
 
-    async def list_regions(self, account_id: str, region: str | None = None) -> list:
+    async def list_regions(
+        self,
+        account_id: str,
+        region: str | None = None,
+        user_id: str | UUID | None = None,
+    ) -> list:
         target_region = region or "us-east-1"
-        return await self.account_discovery.list_regions(account_id, target_region)
+        return await self.account_discovery.list_regions(
+            account_id,
+            target_region,
+            user_id=user_id,
+        )
 
-    async def discover_topology(self, account_id: str, region: str) -> AwsTopologyResult:
+    async def discover_topology(
+        self,
+        account_id: str,
+        region: str,
+        user_id: str | UUID | None = None,
+    ) -> AwsTopologyResult:
         """Discover infrastructure resources and build a topology graph for a region."""
-        account = await self.account_discovery.discover_account(region)
+        factory = await self.account_discovery.resolve_factory(
+            account_id,
+            region,
+            user_id=user_id,
+        )
+        scoped = _AwsScopedCollectors(factory)
+        account = await scoped.account_discovery.discover_account(region)
         if account.account_id != account_id:
-            logger.warning(
-                "Topology discovery account mismatch | requested={} active={}",
-                account_id,
-                account.account_id,
+            raise AwsCredentialsError(
+                f"Resolved credentials are for account {account.account_id}, "
+                f"expected {account_id}."
             )
 
-        instances, ebs_volumes, elastic_ips = await self.ec2_discovery.discover(region)
-        lambda_functions = await self.lambda_discovery.discover(region)
-        s3_buckets = await self.s3_discovery.discover(region)
-        vpcs = await self.vpc_discovery.discover(region)
+        instances, ebs_volumes, elastic_ips = await scoped.ec2_discovery.discover(region)
+        lambda_functions = await scoped.lambda_discovery.discover(region)
+        s3_buckets = await scoped.s3_discovery.discover(region)
+        vpcs = await scoped.vpc_discovery.discover(region)
 
         instance_security_map = {
             instance.instance_id: instance.security_groups for instance in instances
         }
-        security_groups = await self.security_group_discovery.discover(
+        security_groups = await scoped.security_group_discovery.discover(
             region,
             instance_security_map,
         )
-        load_balancers, target_groups = await self.load_balancer_discovery.discover(region)
-        auto_scaling_groups = await self.autoscaling_discovery.discover(region)
+        load_balancers, target_groups = await scoped.load_balancer_discovery.discover(region)
+        auto_scaling_groups = await scoped.autoscaling_discovery.discover(region)
 
         resources = AwsResourceDiscoveryResult(
             ec2_instances=instances,
@@ -136,7 +169,7 @@ class AWSInvestigationService:
             elastic_ips=elastic_ips,
         )
 
-        topology = self.topology_builder.build(resources, region)
+        topology = scoped.topology_builder.build(resources, region)
         logger.info(
             "AWS topology discovered | account={} region={} nodes={} relationships={}",
             account_id,
@@ -155,11 +188,21 @@ class AWSInvestigationService:
         notes: list[str] = []
         try:
             await self._report_progress(on_progress, "Account Discovery")
-            account = await self.account_discovery.discover_account(request.region)
+            factory = await self.account_discovery.resolve_factory(
+                request.account_id,
+                request.region,
+                user_id=user_id,
+            )
+            scoped = _AwsScopedCollectors(factory)
+            account = await scoped.account_discovery.discover_account(request.region)
             if account.account_id != request.account_id:
+                raise AwsCredentialsError(
+                    f"Resolved credentials are for account {account.account_id}, "
+                    f"expected {request.account_id}."
+                )
+            if factory.assumed_account_id:
                 notes.append(
-                    "Requested account_id does not match active credentials. "
-                    "Cross-account role assumption is not implemented yet."
+                    f"Using STS AssumeRole credentials for account {request.account_id}."
                 )
 
             scope = discovery_scope(request.issue_type)
@@ -169,7 +212,9 @@ class AWSInvestigationService:
             elastic_ips: list = []
             if "ec2" in scope:
                 await self._report_progress(on_progress, "EC2 Discovery")
-                instances, ebs_volumes, elastic_ips = await self.ec2_discovery.discover(request.region)
+                instances, ebs_volumes, elastic_ips = await scoped.ec2_discovery.discover(
+                    request.region
+                )
             else:
                 notes.append(
                     f"Skipped EC2 discovery for focused troubleshooting mode: {request.issue_type}."
@@ -178,7 +223,7 @@ class AWSInvestigationService:
             lambda_functions: list = []
             if "lambda" in scope:
                 await self._report_progress(on_progress, "Lambda Discovery")
-                lambda_functions = await self.lambda_discovery.discover(request.region)
+                lambda_functions = await scoped.lambda_discovery.discover(request.region)
             else:
                 notes.append(
                     f"Skipped Lambda discovery for focused troubleshooting mode: {request.issue_type}."
@@ -187,7 +232,7 @@ class AWSInvestigationService:
             s3_buckets: list = []
             if "s3" in scope:
                 await self._report_progress(on_progress, "S3 Discovery")
-                s3_buckets = await self.s3_discovery.discover(request.region)
+                s3_buckets = await scoped.s3_discovery.discover(request.region)
             else:
                 notes.append(
                     f"Skipped S3 discovery for focused troubleshooting mode: {request.issue_type}."
@@ -196,7 +241,7 @@ class AWSInvestigationService:
             vpcs: list = []
             if "network" in scope:
                 await self._report_progress(on_progress, "Network Discovery")
-                vpcs = await self.vpc_discovery.discover(request.region)
+                vpcs = await scoped.vpc_discovery.discover(request.region)
 
             security_groups: list = []
             if "security_groups" in scope:
@@ -204,7 +249,7 @@ class AWSInvestigationService:
                     instance.instance_id: instance.security_groups for instance in instances
                 }
                 await self._report_progress(on_progress, "Security Groups")
-                security_groups = await self.security_group_discovery.discover(
+                security_groups = await scoped.security_group_discovery.discover(
                     request.region,
                     instance_security_map,
                 )
@@ -214,10 +259,10 @@ class AWSInvestigationService:
             auto_scaling_groups: list = []
             if "load_balancers" in scope:
                 await self._report_progress(on_progress, "Load Balancers")
-                load_balancers, target_groups = await self.load_balancer_discovery.discover(
+                load_balancers, target_groups = await scoped.load_balancer_discovery.discover(
                     request.region
                 )
-                auto_scaling_groups = await self.autoscaling_discovery.discover(request.region)
+                auto_scaling_groups = await scoped.autoscaling_discovery.discover(request.region)
 
             resources = AwsResourceDiscoveryResult(
                 ec2_instances=instances,
@@ -233,9 +278,9 @@ class AWSInvestigationService:
             )
 
             await self._report_progress(on_progress, "Topology")
-            topology = self.topology_builder.build(resources, request.region)
+            topology = scoped.topology_builder.build(resources, request.region)
             await self._report_progress(on_progress, "CloudWatch")
-            cloudwatch = await self.cloudwatch_collector.collect(
+            cloudwatch = await scoped.cloudwatch_collector.collect(
                 request.region,
                 instances,
                 window=request.cloudwatch_window,
@@ -243,7 +288,7 @@ class AWSInvestigationService:
             )
             await self._report_progress(on_progress, "CloudTrail")
             cloudtrail = (
-                await self.cloudtrail_collector.collect(
+                await scoped.cloudtrail_collector.collect(
                     request.region,
                     instances=instances,
                     security_groups=security_groups,
@@ -254,11 +299,12 @@ class AWSInvestigationService:
             )
             await self._report_progress(on_progress, "AWS Config")
             aws_config = (
-                await self.config_collector.collect(request.region, instances)
+                await scoped.config_collector.collect(request.region, instances)
                 if instances
                 else AwsConfigResult(enabled=False)
             )
-            deployment_correlation = await self.deployment_correlation_collector.collect()
+            deployment_correlation = await scoped.deployment_correlation_collector.collect()
+
 
             investigation = AwsInvestigationContext(
                 account_id=request.account_id,
@@ -305,7 +351,11 @@ class AWSInvestigationService:
 
             if request.include_ai:
                 await self._report_progress(on_progress, "AI Diagnosis")
-                logger.info("Running AWS AI diagnosis | account={} region={}", request.account_id, request.region)
+                logger.info(
+                    "Running AWS AI diagnosis | account={} region={}",
+                    request.account_id,
+                    request.region,
+                )
                 diagnosis_payload = response.model_dump(mode="json")
                 if user_id:
                     from app.services.mcp_enrichment_service import mcp_enrichment_service

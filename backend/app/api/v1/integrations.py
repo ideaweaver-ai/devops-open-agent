@@ -58,11 +58,22 @@ from app.services.qdrant_settings_service import QdrantSettingsService
 from app.services.rag_service import rag_service
 from app.services.slack_settings_service import SlackSettingsService
 from app.services.teams_settings_service import TeamsSettingsService
+from app.services.aws_settings_service import AwsSettingsService
+from app.modules.aws.client import AwsClientFactory
+from app.modules.aws.errors import AwsApiError, AwsCredentialsError
+from app.core.config import get_settings
+from app.models.aws_integration import (
+    AwsIntegrationResponse,
+    AwsIntegrationSettings,
+    AwsTestRequest,
+    AwsTestResponse,
+)
 
 router = APIRouter(tags=["integrations"])
 slack_settings_service = SlackSettingsService()
 pagerduty_settings_service = PagerDutySettingsService()
 teams_settings_service = TeamsSettingsService()
+aws_settings_service = AwsSettingsService()
 mcp_settings_service = McpSettingsService()
 mcp_access_service = McpAccessService()
 qdrant_settings_service = QdrantSettingsService()
@@ -430,3 +441,81 @@ async def delete_mcp_blacklist_entry(
         )
     except McpUrlPolicyError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get("/integrations/aws", response_model=AwsIntegrationResponse)
+async def get_aws_integration(
+    current_user: UserResponse = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_session),
+) -> AwsIntegrationResponse:
+    return await aws_settings_service.get_settings(session, current_user.id)
+
+
+@router.put("/integrations/aws", response_model=AwsIntegrationResponse)
+async def update_aws_integration(
+    payload: AwsIntegrationSettings,
+    current_user: UserResponse = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_session),
+) -> AwsIntegrationResponse:
+    if payload.enabled and not payload.accounts:
+        raise HTTPException(
+            status_code=400,
+            detail="Add at least one AWS account with a role ARN when enabling multi-account.",
+        )
+    try:
+        return await aws_settings_service.upsert_settings(session, current_user.id, payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/integrations/aws/test", response_model=AwsTestResponse)
+async def test_aws_integration(
+    payload: AwsTestRequest = AwsTestRequest(),
+    current_user: UserResponse = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_session),
+) -> AwsTestResponse:
+    settings = get_settings()
+    region = settings.aws_default_region or "us-east-1"
+    targets = await aws_settings_service.list_enabled_targets(
+        session,
+        current_user.id,
+        require_integration_enabled=False,
+    )
+    if not targets:
+        raise HTTPException(
+            status_code=400,
+            detail="Configure at least one enabled AWS account before testing.",
+        )
+    requested = payload.account_id
+    target = None
+    if requested:
+        target = next((t for t in targets if t.account_id == requested.strip()), None)
+        if target is None:
+            raise HTTPException(
+                status_code=400,
+                detail=f"No configured account found for account_id={requested}.",
+            )
+    else:
+        target = targets[0]
+
+    factory = AwsClientFactory()
+    try:
+        scoped = factory.for_account(
+            target.default_region or region,
+            target.account_id,
+            role_arn=target.role_arn,
+            external_id=target.external_id,
+            allow_hub=False,
+        )
+        identity = scoped.get_caller_identity(target.default_region or region)
+    except (AwsCredentialsError, AwsApiError) as exc:
+        logger.warning("AWS AssumeRole test failed | account={} error={}", target.account_id, exc)
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    return AwsTestResponse(
+        status="ok",
+        message=f"Assumed role into account {target.account_id} successfully.",
+        account_id=str(identity.get("Account")),
+        caller_arn=identity.get("Arn"),
+        assumed_role=True,
+    )

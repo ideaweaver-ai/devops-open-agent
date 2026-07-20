@@ -31,7 +31,10 @@ async def get_aws_agent_status(
     _current_user: UserResponse = Depends(get_current_user),
 ) -> AwsAgentStatusResponse:
     return AwsAgentStatusResponse(
-        message="AWS investigation engine collects infrastructure evidence via boto3.",
+        message=(
+            "AWS investigation engine collects infrastructure evidence via boto3, "
+            "with optional STS AssumeRole for multi-account access."
+        ),
         capabilities=[
             "ec2",
             "lambda",
@@ -53,6 +56,7 @@ async def get_aws_agent_status(
             "aws_config",
             "topology",
             "ai_diagnosis",
+            "multi_account_assume_role",
         ],
     )
 
@@ -60,12 +64,15 @@ async def get_aws_agent_status(
 @router.get("/aws/accounts", response_model=AwsAccountsResponse)
 async def list_aws_accounts(
     region: str | None = Query(None, description="Region used for account discovery"),
-    _current_user: UserResponse = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
 ) -> AwsAccountsResponse:
     settings = get_settings()
     target_region = region or settings.aws_default_region
     try:
-        accounts = await aws_investigation_service.list_accounts(target_region)
+        accounts = await aws_investigation_service.list_accounts(
+            target_region,
+            user_id=current_user.id,
+        )
         return AwsAccountsResponse(accounts=accounts)
     except Exception as exc:
         raise HTTPException(status_code=502, detail=sanitize_error_message(str(exc))) from exc
@@ -75,12 +82,16 @@ async def list_aws_accounts(
 async def list_aws_regions(
     account_id: str = Query(..., description="Target AWS account ID"),
     region: str | None = Query(None, description="Region used for discovery API calls"),
-    _current_user: UserResponse = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
 ) -> AwsRegionsResponse:
     settings = get_settings()
     target_region = region or settings.aws_default_region
     try:
-        regions = await aws_investigation_service.list_regions(account_id, target_region)
+        regions = await aws_investigation_service.list_regions(
+            account_id,
+            target_region,
+            user_id=current_user.id,
+        )
         return AwsRegionsResponse(account_id=account_id, regions=regions)
     except Exception as exc:
         raise HTTPException(status_code=502, detail=sanitize_error_message(str(exc))) from exc
@@ -90,10 +101,14 @@ async def list_aws_regions(
 async def get_aws_topology(
     account_id: str = Query(..., description="Target AWS account ID"),
     region: str = Query(..., description="AWS region to map"),
-    _current_user: UserResponse = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
 ) -> AwsTopologyResult:
     try:
-        return await aws_investigation_service.discover_topology(account_id, region)
+        return await aws_investigation_service.discover_topology(
+            account_id,
+            region,
+            user_id=current_user.id,
+        )
     except Exception as exc:
         raise HTTPException(status_code=502, detail=sanitize_error_message(str(exc))) from exc
 
@@ -101,9 +116,12 @@ async def get_aws_topology(
 @router.post("/aws/investigate", response_model=AwsInvestigationResponse)
 async def investigate_aws_infrastructure(
     request: AwsInvestigationRequest,
-    _current_user: UserResponse = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
 ) -> AwsInvestigationResponse:
-    result = await aws_investigation_service.investigate(request)
+    result = await aws_investigation_service.investigate(
+        request,
+        user_id=str(current_user.id),
+    )
     if result.status == "error":
         raise HTTPException(status_code=502, detail=result.error or "AWS investigation failed")
     return result
