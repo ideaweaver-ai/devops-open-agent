@@ -17,12 +17,12 @@
 | Module | Description |
 |--------|-------------|
 | **Kubernetes Debugging Agent** | Investigate clusters, workloads, networking, and topology — **on demand or on a schedule** — with optional **LLM-as-a-Judge** verification |
-| **AWS DevOps Agent** | Troubleshoot AWS infrastructure — EC2, **Lambda**, **S3**, VPC, load balancers, CloudWatch, and more |
+| **AWS DevOps Agent** | Troubleshoot AWS infrastructure — EC2, **Lambda**, **S3**, VPC, load balancers, CloudWatch, and more — with optional **multi-account STS AssumeRole** |
 | **Cloud Cost Detector** | Find unused and underutilized AWS resources |
 | **PR Reviewer** | AI DevOps review for GitHub pull requests |
 | **Performance Debugging** | Debug Linux host performance over passwordless SSH — CPU, memory, disk, and network + AI analysis |
 | **Security Scanning** | Scan container images and Kubernetes clusters for vulnerabilities and misconfigurations using **Trivy**, with AI-prioritized remediation |
-| **Integrations** | **Slack**, **Microsoft Teams**, **PagerDuty**, **MCP**, and **Qdrant (RAG)** — notifications, on-call incidents, external tool servers, and investigation memory |
+| **Integrations** | **Slack**, **Microsoft Teams**, **PagerDuty**, **MCP**, **Qdrant (RAG)**, and **AWS Accounts** — notifications, on-call, tools, RAG memory, and multi-account AssumeRole targets |
 
 ## Demo Video
 
@@ -274,6 +274,7 @@ Regenerate the diagram: `python3 scripts/build_integrations_diagram.py`
 | **PagerDuty** | Integrations → PagerDuty | On-call incidents, Events API v2, enterprise alerting |
 | **MCP** | Integrations → MCP | External tools & resources via Model Context Protocol |
 | **Qdrant (RAG)** | Integrations → Qdrant | Store investigations as vectors; retrieve similar past cases for AI analysis |
+| **AWS Accounts** | Integrations → AWS Accounts | STS AssumeRole targets for multi-account AWS investigate + topology |
 
 Slack, Microsoft Teams, and PagerDuty support:
 
@@ -553,6 +554,106 @@ RAG_MAX_RESULTS=4
 | `POST` | `/api/v1/integrations/qdrant/test` |
 
 Use **Test connection** to verify the Qdrant endpoint and embeddings. Investigations expose an `include_rag` flag on `POST /api/v1/investigate` for both `kubernetes` and `aws` agent types.
+
+## AWS multi-account (STS AssumeRole)
+
+Troubleshoot **multiple AWS accounts** from one DevOps Open Agent deployment without storing long-lived keys for every member account. Hub credentials stay on the host (`~/.aws` / `AWS_PROFILE` / instance IAM role). Member accounts are reached with **STS AssumeRole** and short-lived credentials.
+
+<p align="center">
+  <img src="img/devops-open-agent-multi-aws-account-poster.png" alt="Enterprise week — multi-AWS-account support for DevOps Open Agent" width="100%" />
+</p>
+
+### What you get
+
+| Capability | Behavior |
+|------------|----------|
+| **Account picker** | Hub identity plus every enabled AssumeRole account for the signed-in user |
+| **Investigate** | EC2 / Lambda / S3 / VPC / SG / LB / CloudWatch / CloudTrail / Config run in the **selected** account |
+| **Topology** | Same assumed session as investigate |
+| **Hard-fail** | Unknown account IDs do **not** silently fall back to the hub account |
+| **Secrets** | External ID is stored per user and returned masked; never logged in full |
+
+Cloud Cost Detector multi-account support is deferred to a later phase.
+
+### Configure in the UI
+
+**Integrations → AWS Accounts** (`/integrations/aws`):
+
+| Setting | Description |
+|---------|-------------|
+| **Enable** | Include configured accounts in the AWS agent account picker |
+| **Account ID** | 12-digit target (member) account |
+| **Role ARN** | IAM role in the target account (account ID in the ARN must match) |
+| **External ID** | Optional shared secret for the trust policy; masked after save |
+| **Default region** | Preferred region for AssumeRole and discovery |
+| **Test connection** | Validates hub credentials can assume the role and that the assumed identity matches the account ID |
+
+### How it works
+
+1. Hub session is created from the host credential chain (`AWS_PROFILE`, env keys, or instance role).
+2. `GET /api/v1/aws/accounts` returns the hub caller identity plus the current user’s enabled AssumeRole accounts.
+3. Investigate / topology resolve credentials:
+   - Selected account **is** the hub → use the hub session
+   - Selected account **has** a configured role → `sts:AssumeRole` → temporary session bound to that account
+   - Otherwise → **hard-fail** with a clear error (configure the account under Integrations)
+4. All AWS API calls for that investigation use the resolved session.
+
+### IAM requirements
+
+**Hub identity** (profile / instance role that runs DevOps Open Agent):
+
+```json
+{
+  "Effect": "Allow",
+  "Action": "sts:AssumeRole",
+  "Resource": "arn:aws:iam::TARGET_ACCOUNT_ID:role/YourInvestigationRole"
+}
+```
+
+**Target role trust policy** (in each member account):
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": "arn:aws:iam::HUB_ACCOUNT_ID:root"
+      },
+      "Action": "sts:AssumeRole",
+      "Condition": {
+        "StringEquals": {
+          "sts:ExternalId": "optional-external-id"
+        }
+      }
+    }
+  ]
+}
+```
+
+Omit the `Condition` block if you are not using an external ID. Prefer a specific hub role ARN as `Principal` instead of account root in production.
+
+**Target role permissions:** read-only investigatory access for the services you use (EC2, Lambda, S3, VPC, ELB, Auto Scaling, CloudWatch, CloudTrail, Config, STS `GetCallerIdentity`). Avoid admin/`OrganizationAccountAccessRole` in production; use a least-privilege investigation role.
+
+### API (authenticated)
+
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| `GET` | `/api/v1/integrations/aws` | Load current user’s AWS account mappings (secrets masked) |
+| `PUT` | `/api/v1/integrations/aws` | Create/update mappings |
+| `POST` | `/api/v1/integrations/aws/test` | AssumeRole smoke test for one account |
+| `GET` | `/api/v1/aws/accounts` | Hub + configured accounts for the investigate picker |
+
+### Quick validation
+
+1. Configure at least one member account under **Integrations → AWS Accounts** and run **Test connection**.
+2. Open **AWS → Investigate** — the account dropdown should list the hub and the member account.
+3. Select the member account, run an investigation, and confirm the result account ID / credential source shows the assumed account (not a silent hub fallback).
+
+### Hub credentials in Docker
+
+`docker-compose.yml` mounts `${HOME}/.aws` into the backend container read-only. Set `AWS_PROFILE` / `AWS_DEFAULT_REGION` in `backend/.env` when needed. The hub identity must be able to call `sts:AssumeRole` on every configured target role.
 
 ## Performance Debugging
 
