@@ -18,14 +18,14 @@ FOCUSED_DISCOVERY: dict[str, frozenset[str]] = {
 }
 
 FOCUSED_FINDING_CATEGORIES: dict[str, frozenset[str]] = {
-    "lambda": frozenset({"lambda"}),
-    "s3": frozenset({"s3"}),
-    "ec2_availability": frozenset({"ec2", "change_audit", "scope"}),
-    "network": frozenset({"security", "scope"}),
-    "security": frozenset({"security", "change_audit", "scope"}),
-    "load_balancer": frozenset({"load_balancer", "ec2", "scope"}),
-    "performance": frozenset({"performance", "ec2", "lambda", "scope"}),
-    "change_audit": frozenset({"change_audit", "scope"}),
+    "lambda": frozenset({"lambda", "observability"}),
+    "s3": frozenset({"s3", "observability"}),
+    "ec2_availability": frozenset({"ec2", "change_audit", "scope", "observability"}),
+    "network": frozenset({"security", "scope", "observability"}),
+    "security": frozenset({"security", "change_audit", "scope", "observability"}),
+    "load_balancer": frozenset({"load_balancer", "ec2", "scope", "observability"}),
+    "performance": frozenset({"performance", "ec2", "lambda", "scope", "observability"}),
+    "change_audit": frozenset({"change_audit", "scope", "observability"}),
 }
 
 

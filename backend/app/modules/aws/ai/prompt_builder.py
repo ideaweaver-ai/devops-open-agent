@@ -26,6 +26,12 @@ CORE RULES:
 - Keep the full JSON response concise: suggested_fix under 1200 characters, at most 5 kubectl_commands, at most 8 evidence items.
 - Do not wrap the JSON in markdown code fences.
 
+When observability_data findings from Prometheus or Grafana are present:
+- Cite them explicitly in evidence with source "observability".
+- Prefer correlating host/EC2 metrics (CPU, load, memory) and Grafana dashboards/annotations with CloudWatch and EC2 findings.
+- Do NOT invent metric values, dashboard titles, or log lines that are not in observability_data.
+- If findings is empty or observability is disabled, do not invent Prometheus/Grafana evidence.
+
 SUGGESTED_FIX REQUIREMENTS:
 - suggested_fix must be detailed, numbered, and grounded entirely in finding_summary and evidence sections.
 - Address each finding category present in the evidence (do not assume EC2 or security issues exist unless evidence shows them).
@@ -35,7 +41,7 @@ SUGGESTED_FIX REQUIREMENTS:
 - kubectl_commands must mirror commands described in suggested_fix.
 - validation_steps and prevention_recommendation must relate to findings actually detected in this investigation.
 
-Evidence source values: ec2, lambda, s3, vpc, security_groups, load_balancers, cloudwatch, cloudtrail, config, topology, auto_scaling
+Evidence source values: ec2, lambda, s3, vpc, security_groups, load_balancers, cloudwatch, cloudtrail, config, topology, auto_scaling, observability
 
 Respond with valid JSON only using this exact schema:
 {
@@ -55,9 +61,10 @@ Respond with valid JSON only using this exact schema:
 ISSUE_TYPE_INSTRUCTIONS: dict[str, str] = {
     "full_scan": """TROUBLESHOOTING MODE: Full infrastructure scan.
 - Review finding_summary and report ALL issues ranked by severity (critical → high → medium).
-- Include security exposures, EC2 state issues, Lambda function health, S3 bucket posture, load balancer health, CloudWatch alarms, and recent changes.
+- Include security exposures, EC2 state issues, Lambda function health, S3 bucket posture, load balancer health, CloudWatch alarms, observability (Prometheus/Grafana) findings, and recent changes.
 - Do not ignore security group rules (including HTTP/80 and HTTPS/443 on 0.0.0.0/0).
-- If multiple unrelated issues exist, summarize each clearly in root_cause.""",
+- If multiple unrelated issues exist, summarize each clearly in root_cause.
+- When observability_data reports host CPU/load pressure, cite it even if CloudWatch averages look low.""",
     "security": """TROUBLESHOOTING MODE: Security & exposure.
 - Focus on security_findings.internet_exposed_ingress_rules — every 0.0.0.0/0 and ::/0 rule MUST be reported.
 - Include HTTP (80), HTTPS (443), SSH (22), and all-traffic rules.
@@ -89,7 +96,10 @@ ISSUE_TYPE_INSTRUCTIONS: dict[str, str] = {
 - Focus on unhealthy targets, inactive load balancers, and target group health reasons.
 - Correlate with EC2 instance state if targets are instances.""",
     "performance": """TROUBLESHOOTING MODE: Performance & monitoring.
-- Focus on CloudWatch alarms in ALARM state and instance metric activity.
+- Prioritize observability_data (Prometheus / Grafana) when present — host CPU, load, memory, and dashboard hits are first-class evidence.
+- Correlate Prometheus host metrics (e.g. node_cpu / load / Alloy instance labels) with CloudWatch CPUUtilization for the same EC2 instances.
+- Do NOT conclude "no high CPU" from CloudWatch alone if observability_data shows elevated host CPU or load.
+- Also review CloudWatch alarms in ALARM state and instance metric activity.
 - Identify metric anomalies, idle vs active instances, and threshold breaches.""",
     "change_audit": """TROUBLESHOOTING MODE: Change audit & attribution.
 - Focus on CloudTrail events: who changed what, when, from which IP.
@@ -105,6 +115,7 @@ FOCUSED_PROMPT_SECTIONS: dict[str, list[str]] = {
         "finding_summary",
         "s3_findings",
         "security_findings",
+        "observability_data",
         "account",
     ],
     "lambda": [
@@ -112,6 +123,7 @@ FOCUSED_PROMPT_SECTIONS: dict[str, list[str]] = {
         "finding_summary",
         "lambda_findings",
         "cloudwatch_findings",
+        "observability_data",
         "account",
     ],
     "ec2_availability": [
@@ -121,6 +133,7 @@ FOCUSED_PROMPT_SECTIONS: dict[str, list[str]] = {
         "incident_attribution",
         "cloudtrail_findings",
         "cloudwatch_findings",
+        "observability_data",
         "account",
     ],
     "load_balancer": [
@@ -128,6 +141,7 @@ FOCUSED_PROMPT_SECTIONS: dict[str, list[str]] = {
         "finding_summary",
         "load_balancer_findings",
         "ec2_findings",
+        "observability_data",
         "account",
     ],
     "network": [
@@ -135,6 +149,7 @@ FOCUSED_PROMPT_SECTIONS: dict[str, list[str]] = {
         "finding_summary",
         "network_findings",
         "security_findings",
+        "observability_data",
         "account",
     ],
     "security": [
@@ -142,11 +157,13 @@ FOCUSED_PROMPT_SECTIONS: dict[str, list[str]] = {
         "finding_summary",
         "security_findings",
         "cloudtrail_findings",
+        "observability_data",
         "account",
     ],
     "performance": [
         "discovery_assessment",
         "finding_summary",
+        "observability_data",
         "cloudwatch_findings",
         "ec2_findings",
         "account",
@@ -157,6 +174,7 @@ FOCUSED_PROMPT_SECTIONS: dict[str, list[str]] = {
         "cloudtrail_findings",
         "config_findings",
         "ec2_findings",
+        "observability_data",
         "account",
     ],
 }
@@ -192,6 +210,21 @@ class AwsPromptBuilder:
                 [
                     f"## {title}",
                     json.dumps(payload, indent=2),
+                    "",
+                ]
+            )
+
+        # Always include Prometheus/Grafana evidence when collected, even if
+        # a focused issue type omitted the section historically.
+        observability = context.get("observability_data") or {}
+        obs_findings = observability.get("findings") or []
+        if obs_findings and (
+            not section_keys or "observability_data" not in section_keys
+        ):
+            sections.extend(
+                [
+                    "## Observability Data (Prometheus / Grafana)",
+                    json.dumps(observability, indent=2),
                     "",
                 ]
             )
@@ -246,6 +279,7 @@ class AwsPromptBuilder:
             ("Load Balancer Findings", context.get("load_balancer_findings", {})),
             ("Auto Scaling Findings", context.get("auto_scaling_findings", {})),
             ("AWS Config Findings", context.get("config_findings", {})),
+            ("Observability Data (Prometheus / Grafana)", context.get("observability_data", {})),
             ("MCP Server Context", context.get("mcp_enrichment", {})),
             (
                 "Account & Resource Counts",
@@ -273,7 +307,9 @@ class AwsPromptBuilder:
             "load_balancer_findings": all_sections[11],
             "auto_scaling_findings": all_sections[12],
             "config_findings": all_sections[13],
-            "account": all_sections[14],
+            "observability_data": all_sections[14],
+            "mcp_enrichment": all_sections[15],
+            "account": all_sections[16],
         }
 
         selected: list[tuple[str, Any]] = [all_sections[1]]

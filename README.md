@@ -22,7 +22,7 @@
 | **PR Reviewer** | AI DevOps review for GitHub pull requests |
 | **Performance Debugging** | Debug Linux host performance over passwordless SSH — CPU, memory, disk, and network + AI analysis |
 | **Security Scanning** | Scan container images and Kubernetes clusters for vulnerabilities and misconfigurations using **Trivy**, with AI-prioritized remediation |
-| **Integrations** | **Slack**, **Microsoft Teams**, **PagerDuty**, **MCP**, **Qdrant (RAG)**, and **AWS Accounts** — notifications, on-call, tools, RAG memory, and multi-account AssumeRole targets |
+| **Integrations** | **Slack**, **Microsoft Teams**, **PagerDuty**, **MCP**, **Qdrant (RAG)**, **Prometheus**, **Grafana**, and **AWS Accounts** — notifications, on-call, tools, RAG, observability evidence, and multi-account AssumeRole |
 
 ## Demo Video
 
@@ -261,7 +261,7 @@ docker compose up -d --force-recreate backend
 
 ## Integrations
 
-Deliver AI recommendations from investigations and PR reviews to the tools your team already uses — and enrich AI analysis with external MCP servers. Configure everything under **Integrations** in the UI.
+Deliver AI recommendations from investigations and PR reviews to the tools your team already uses — enrich AI analysis with MCP servers — and pull **Prometheus/Grafana observability evidence** into Kubernetes and AWS investigations. Configure everything under **Integrations** in the UI.
 
 ![DevOps Open Agent — Integrations to PagerDuty, Microsoft Teams, and Slack](img/integrations-diagram.png)
 
@@ -274,6 +274,8 @@ Regenerate the diagram: `python3 scripts/build_integrations_diagram.py`
 | **PagerDuty** | Integrations → PagerDuty | On-call incidents, Events API v2, enterprise alerting |
 | **MCP** | Integrations → MCP | External tools & resources via Model Context Protocol |
 | **Qdrant (RAG)** | Integrations → Qdrant | Store investigations as vectors; retrieve similar past cases for AI analysis |
+| **Prometheus** | Integrations → Prometheus | Host/EC2 + Kubernetes metrics evidence for AI diagnosis |
+| **Grafana** | Integrations → Grafana | Dashboard/annotation hits for Kubernetes and AWS investigations |
 | **AWS Accounts** | Integrations → AWS Accounts | STS AssumeRole targets for multi-account AWS investigate + topology |
 
 Slack, Microsoft Teams, and PagerDuty support:
@@ -554,6 +556,43 @@ RAG_MAX_RESULTS=4
 | `POST` | `/api/v1/integrations/qdrant/test` |
 
 Use **Test connection** to verify the Qdrant endpoint and embeddings. Investigations expose an `include_rag` flag on `POST /api/v1/investigate` for both `kubernetes` and `aws` agent types.
+
+### Observability evidence (Prometheus and Grafana)
+
+Pull live metrics and dashboard annotations into **Kubernetes and AWS investigations** so AI diagnosis can cite real signals — not invent them. When configured and enabled, the investigation pipeline queries each source in parallel during evidence collection, attaches compact findings to the diagnosis context, and surfaces them in the investigation UI.
+
+
+| Integration | What is collected | Required access |
+|-------------|-------------------|-----------------|
+| **Prometheus** | Host/EC2 metrics (CPU, load, memory via node-exporter/Alloy) plus Kubernetes PromQL (pod restarts, container CPU/memory, OOM) | Read access to `/api/v1/query` and `/api/v1/query_range` (Bearer or Basic auth) |
+| **Grafana** | Dashboard search hits (K8s or AWS/CPU keywords) + annotations in the investigation window | Viewer (or higher) API token |
+
+Shared settings pattern:
+
+- Per-user PostgreSQL settings; secrets never returned raw (`*_configured` + masked preview)
+- Enabled integrations apply to **both** Kubernetes and AWS investigations (host metrics always; K8s PromQL when investigating clusters)
+- **Test connection** button in the UI
+- Optional instance-level defaults in `backend/.env`
+
+```env
+PROMETHEUS_INSTANCE_URL=
+PROMETHEUS_INSTANCE_BEARER_TOKEN=
+PROMETHEUS_INSTANCE_BASIC_AUTH_USER=
+PROMETHEUS_INSTANCE_BASIC_AUTH_PASSWORD=
+GRAFANA_INSTANCE_URL=
+GRAFANA_INSTANCE_API_TOKEN=
+```
+
+**API** (authenticated):
+
+| Method | Endpoint |
+|--------|----------|
+| `GET` / `PUT` | `/api/v1/integrations/prometheus` |
+| `POST` | `/api/v1/integrations/prometheus/test` |
+| `GET` / `PUT` | `/api/v1/integrations/grafana` |
+| `POST` | `/api/v1/integrations/grafana/test` |
+
+Findings are evidence only — there is **no auto-remediation** from observability signals. Loki and OpenTelemetry remain stubs for a later phase.
 
 ## AWS multi-account (STS AssumeRole)
 

@@ -73,6 +73,7 @@ class InvestigationService:
         self,
         request: InvestigationRequest,
         on_progress: ProgressCallback | None = None,
+        user_id: str | None = None,
     ) -> InvestigationResponse:
         cluster_config = self.cluster_manager.resolve(request.cluster_id)
         executor = KubectlExecutor(
@@ -121,7 +122,14 @@ class InvestigationService:
 
         await self._report_progress(on_progress, "Topology Extraction")
         topology = TopologyBuilder(executor).build(resources, endpoints_raw=cache.endpoints)
-        observability = await self.observability_collector.collect(request.cluster_id)
+        pod_names = [pod.name for pod in pod_inspection.problematic_pods]
+        observability = await self.observability_collector.collect(
+            request.cluster_id or "",
+            user_id=user_id,
+            namespace=request.namespace,
+            pod_names=pod_names,
+            agent_type="kubernetes",
+        )
         deployment_correlation = await self.deployment_correlation_collector.collect(
             request.cluster_id
         )

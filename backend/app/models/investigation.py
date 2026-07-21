@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 from app.models.diagnosis import DiagnosisResult
@@ -143,6 +145,16 @@ class TopologyResult(BaseModel):
 
 class IntegrationStatus(BaseModel):
     enabled: bool = False
+    error: str | None = None
+
+
+class ObservabilityFinding(BaseModel):
+    source: Literal["prometheus", "grafana"]
+    title: str
+    severity: str | None = None
+    detail: str
+    query: str | None = None
+    timestamp: str | None = None
 
 
 class ObservabilityResult(BaseModel):
@@ -151,6 +163,8 @@ class ObservabilityResult(BaseModel):
     grafana: IntegrationStatus = Field(default_factory=IntegrationStatus)
     loki: IntegrationStatus = Field(default_factory=IntegrationStatus)
     opentelemetry: IntegrationStatus = Field(default_factory=IntegrationStatus)
+    findings: list[ObservabilityFinding] = Field(default_factory=list)
+    summary: str | None = None
 
 
 class DeploymentCorrelationResult(BaseModel):

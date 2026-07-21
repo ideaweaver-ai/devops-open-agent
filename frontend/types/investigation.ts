@@ -99,7 +99,7 @@ export interface InvestigationPayload {
     }>;
     nodes: string[];
   };
-  observability: Record<string, unknown>;
+  observability: import("@/types/observability").ObservabilityResult | Record<string, unknown>;
   deployments: Record<string, unknown>;
   investigation: Record<string, unknown>;
   diagnosis?: DiagnosisResult | null;
@@ -147,6 +147,7 @@ export const AWS_INVESTIGATION_STEPS = [
   "CloudWatch",
   "CloudTrail",
   "AWS Config",
+  "Observability",
   "AI Diagnosis",
 ] as const;
 

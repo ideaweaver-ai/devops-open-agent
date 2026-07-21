@@ -6,6 +6,7 @@ import { TopologyGraph } from "@/components/topology/TopologyGraph";
 import { awsTopologyToGraph } from "@/lib/awsTopologyAdapter";
 import { getAwsIssueTypeLabel } from "@/lib/awsIssueTypes";
 import type { AwsInvestigationResponse, AwsLambdaInvocationMetrics } from "@/types/aws";
+import { ObservabilityEvidencePanel } from "@/components/ObservabilityEvidencePanel";
 
 type ResultsTab =
   | "overview"
@@ -17,7 +18,8 @@ type ResultsTab =
   | "topology"
   | "cloudwatch"
   | "cloudtrail"
-  | "config";
+  | "config"
+  | "observability";
 
 const TABS: { id: ResultsTab; label: string }[] = [
   { id: "overview", label: "Overview" },
@@ -30,6 +32,7 @@ const TABS: { id: ResultsTab; label: string }[] = [
   { id: "cloudwatch", label: "CloudWatch" },
   { id: "cloudtrail", label: "CloudTrail" },
   { id: "config", label: "Config" },
+  { id: "observability", label: "Observability" },
 ];
 
 interface AwsInvestigationResultsProps {
@@ -656,6 +659,19 @@ export function AwsInvestigationResults({ data }: AwsInvestigationResultsProps) 
               />
             )}
           </div>
+        )}
+
+        {activeTab === "observability" && (
+          data.observability?.enabled ||
+          (data.observability?.findings?.length ?? 0) > 0 ||
+          data.observability?.summary ? (
+            <ObservabilityEvidencePanel data={data.observability} />
+          ) : (
+            <p className="text-sm text-slate-500">
+              No Prometheus/Grafana evidence for this investigation. Enable
+              integrations under Integrations, then re-run the investigation.
+            </p>
+          )
         )}
       </div>
     </div>

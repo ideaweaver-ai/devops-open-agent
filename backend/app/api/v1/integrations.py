@@ -59,6 +59,20 @@ from app.services.rag_service import rag_service
 from app.services.slack_settings_service import SlackSettingsService
 from app.services.teams_settings_service import TeamsSettingsService
 from app.services.aws_settings_service import AwsSettingsService
+from app.services.grafana_settings_service import GrafanaSettingsService
+from app.services.prometheus_settings_service import PrometheusSettingsService
+from app.observability.grafana import GrafanaClient, GrafanaError
+from app.observability.prometheus import PrometheusClient, PrometheusError
+from app.models.prometheus_integration import (
+    PrometheusIntegrationResponse,
+    PrometheusIntegrationSettings,
+    PrometheusTestResponse,
+)
+from app.models.grafana_integration import (
+    GrafanaIntegrationResponse,
+    GrafanaIntegrationSettings,
+    GrafanaTestResponse,
+)
 from app.modules.aws.client import AwsClientFactory
 from app.modules.aws.errors import AwsApiError, AwsCredentialsError
 from app.core.config import get_settings
@@ -74,6 +88,8 @@ slack_settings_service = SlackSettingsService()
 pagerduty_settings_service = PagerDutySettingsService()
 teams_settings_service = TeamsSettingsService()
 aws_settings_service = AwsSettingsService()
+prometheus_settings_service = PrometheusSettingsService()
+grafana_settings_service = GrafanaSettingsService()
 mcp_settings_service = McpSettingsService()
 mcp_access_service = McpAccessService()
 qdrant_settings_service = QdrantSettingsService()
@@ -441,6 +457,113 @@ async def delete_mcp_blacklist_entry(
         )
     except McpUrlPolicyError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get("/integrations/prometheus", response_model=PrometheusIntegrationResponse)
+async def get_prometheus_integration(
+    current_user: UserResponse = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_session),
+) -> PrometheusIntegrationResponse:
+    return await prometheus_settings_service.get_settings(session, current_user.id)
+
+
+@router.put("/integrations/prometheus", response_model=PrometheusIntegrationResponse)
+async def update_prometheus_integration(
+    payload: PrometheusIntegrationSettings,
+    current_user: UserResponse = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_session),
+) -> PrometheusIntegrationResponse:
+    if payload.enabled:
+        existing = await prometheus_settings_service.get_settings(session, current_user.id)
+        has_url = bool(payload.url.strip())
+        if not has_url and not existing.url.strip() and not existing.instance_url_configured:
+            raise HTTPException(
+                status_code=400,
+                detail="Prometheus URL is required when the integration is enabled.",
+            )
+    return await prometheus_settings_service.upsert_settings(session, current_user.id, payload)
+
+
+@router.post("/integrations/prometheus/test", response_model=PrometheusTestResponse)
+async def test_prometheus_integration(
+    current_user: UserResponse = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_session),
+) -> PrometheusTestResponse:
+    connection = await prometheus_settings_service.resolve_connection(
+        session,
+        current_user.id,
+        require_enabled=False,
+        require_kubernetes=False,
+    )
+    if connection is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Configure a Prometheus URL before testing the connection.",
+        )
+    try:
+        result = await PrometheusClient(connection).test_connection()
+    except PrometheusError as exc:
+        logger.warning("Prometheus test connection failed | error={}", exc)
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return PrometheusTestResponse(
+        status="ok",
+        message="Connected to Prometheus successfully.",
+        version=result.get("version"),
+    )
+
+
+@router.get("/integrations/grafana", response_model=GrafanaIntegrationResponse)
+async def get_grafana_integration(
+    current_user: UserResponse = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_session),
+) -> GrafanaIntegrationResponse:
+    return await grafana_settings_service.get_settings(session, current_user.id)
+
+
+@router.put("/integrations/grafana", response_model=GrafanaIntegrationResponse)
+async def update_grafana_integration(
+    payload: GrafanaIntegrationSettings,
+    current_user: UserResponse = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_session),
+) -> GrafanaIntegrationResponse:
+    if payload.enabled:
+        existing = await grafana_settings_service.get_settings(session, current_user.id)
+        has_url = bool(payload.url.strip())
+        if not has_url and not existing.url.strip() and not existing.instance_url_configured:
+            raise HTTPException(
+                status_code=400,
+                detail="Grafana URL is required when the integration is enabled.",
+            )
+    return await grafana_settings_service.upsert_settings(session, current_user.id, payload)
+
+
+@router.post("/integrations/grafana/test", response_model=GrafanaTestResponse)
+async def test_grafana_integration(
+    current_user: UserResponse = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_session),
+) -> GrafanaTestResponse:
+    connection = await grafana_settings_service.resolve_connection(
+        session,
+        current_user.id,
+        require_enabled=False,
+        require_kubernetes=False,
+    )
+    if connection is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Configure a Grafana URL before testing the connection.",
+        )
+    try:
+        result = await GrafanaClient(connection).test_connection()
+    except GrafanaError as exc:
+        logger.warning("Grafana test connection failed | error={}", exc)
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return GrafanaTestResponse(
+        status="ok",
+        message="Connected to Grafana successfully.",
+        version=result.get("version"),
+        org_name=result.get("org_name"),
+    )
 
 
 @router.get("/integrations/aws", response_model=AwsIntegrationResponse)

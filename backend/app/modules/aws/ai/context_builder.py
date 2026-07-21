@@ -88,6 +88,7 @@ class AwsContextBuilder:
             incident_attribution=incident_attribution,
             discovery_assessment=discovery_assessment,
             issue_type=troubleshooting_focus.get("issue_type", "full_scan"),
+            observability=payload.get("observability") or {},
         )
 
         return {
@@ -118,6 +119,7 @@ class AwsContextBuilder:
             "resource_counts": investigation_ctx.get("resource_counts", {}),
             "mcp_enrichment": payload.get("mcp_enrichment", {}),
             "rag_context": payload.get("rag_context", {}),
+            "observability_data": payload.get("observability", {}),
         }
 
     def _build_ec2_findings(self, instances: list[dict[str, Any]]) -> dict[str, Any]:
@@ -389,8 +391,25 @@ class AwsContextBuilder:
         incident_attribution: dict[str, Any],
         discovery_assessment: dict[str, Any] | None = None,
         issue_type: str = "full_scan",
+        observability: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         findings: list[dict[str, Any]] = []
+
+        for item in (observability or {}).get("findings") or []:
+            severity = str(item.get("severity") or "medium").lower()
+            if severity not in SEVERITY_ORDER:
+                severity = "medium"
+            findings.append(
+                {
+                    "severity": severity,
+                    "category": "observability",
+                    "title": item.get("title") or "Observability finding",
+                    "detail": item.get("detail") or "",
+                    "resource_id": item.get("source"),
+                    "source": item.get("source"),
+                    "query": item.get("query"),
+                }
+            )
 
         if discovery_assessment:
             for warning in discovery_assessment.get("warnings") or []:
