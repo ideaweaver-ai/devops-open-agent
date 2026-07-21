@@ -5,6 +5,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field
 
 from app.models.diagnosis import DiagnosisResult
+from app.models.investigation import ObservabilityResult
 
 
 CloudWatchWindow = Literal["1h", "24h", "7d"]
@@ -442,6 +443,7 @@ class AwsInvestigationResponse(BaseModel):
     cloudtrail: AwsCloudTrailResult
     aws_config: AwsConfigResult
     deployment_correlation: AwsDeploymentCorrelationResult
+    observability: ObservabilityResult = Field(default_factory=ObservabilityResult)
     investigation: AwsInvestigationContext
     diagnosis: DiagnosisResult | None = None
     error: str | None = None

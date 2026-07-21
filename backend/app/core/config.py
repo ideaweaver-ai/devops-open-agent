@@ -60,6 +60,21 @@ class Settings(BaseSettings):
     aws_profile: str = ""
     aws_default_region: str = "us-east-1"
 
+    # Observability evidence (optional instance-level defaults)
+    prometheus_instance_url: str = Field(
+        default="",
+        description="Instance-level Prometheus endpoint used as a fallback for all users.",
+    )
+    prometheus_instance_bearer_token: str = ""
+    prometheus_instance_basic_auth_user: str = ""
+    prometheus_instance_basic_auth_password: str = ""
+    grafana_instance_url: str = Field(
+        default="",
+        description="Instance-level Grafana endpoint used as a fallback for all users.",
+    )
+    grafana_instance_api_token: str = ""
+
+
     log_level: str = "INFO"
 
     multi_cluster_enabled: bool = True

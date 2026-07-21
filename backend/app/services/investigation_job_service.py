@@ -88,9 +88,12 @@ class InvestigationJobService:
             )
 
         try:
+            record = await self.store.get_status(investigation_id)
+            user_id = record.get("user_id") if record else None
             response = await self.investigation_service.investigate(
                 request,
                 on_progress=on_progress,
+                user_id=user_id,
             )
 
             if request.include_ai and response.status == "success":

@@ -13,6 +13,8 @@ import {
 } from "@/hooks/useAwsInvestigation";
 import { useInvestigation } from "@/hooks/useInvestigation";
 import { useQdrantIntegration } from "@/hooks/useQdrantIntegration";
+import { usePrometheusIntegration } from "@/hooks/usePrometheusIntegration";
+import { useGrafanaIntegration } from "@/hooks/useGrafanaIntegration";
 import {
   useInvestigationResult,
   useInvestigationStatus,
@@ -54,9 +56,21 @@ export function AwsDashboard() {
   const regionsQuery = useAwsRegions(accountId, region || undefined, Boolean(accountId));
   const { startInvestigation, isStarting, startError, reset } = useInvestigation();
   const { settings: qdrantSettings } = useQdrantIntegration();
+  const { settings: prometheusSettings, isLoading: prometheusLoading } =
+    usePrometheusIntegration();
+  const { settings: grafanaSettings, isLoading: grafanaLoading } =
+    useGrafanaIntegration();
   const ragAvailable = Boolean(
     (qdrantSettings?.enabled && qdrantSettings?.use_aws) ||
       qdrantSettings?.instance_url_configured,
+  );
+  const prometheusEnabled = Boolean(
+    prometheusSettings?.enabled &&
+      (prometheusSettings.url?.trim() || prometheusSettings.instance_url_configured),
+  );
+  const grafanaEnabled = Boolean(
+    grafanaSettings?.enabled &&
+      (grafanaSettings.url?.trim() || grafanaSettings.instance_url_configured),
   );
   const statusQuery = useInvestigationStatus(activeInvestigationId);
   const status = statusQuery.data?.status;
@@ -165,6 +179,9 @@ export function AwsDashboard() {
           includeRag={includeRag}
           onIncludeRagChange={setIncludeRag}
           ragAvailable={ragAvailable}
+          prometheusEnabled={prometheusEnabled}
+          grafanaEnabled={grafanaEnabled}
+          observabilityLoading={prometheusLoading || grafanaLoading}
         />
 
         {activeInvestigationId && statusQuery.data && (

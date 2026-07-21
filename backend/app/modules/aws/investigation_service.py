@@ -9,6 +9,7 @@ from uuid import UUID
 from loguru import logger
 
 from app.core.errors import sanitize_error_message
+from app.models.investigation import ObservabilityResult
 from app.modules.aws.client import AwsClientFactory
 from app.modules.aws.collectors import (
     AwsCloudTrailCollector,
@@ -42,6 +43,7 @@ from app.modules.aws.models import (
 from app.modules.aws.ai.root_cause_analyzer import AwsRootCauseAnalyzer
 from app.modules.aws.investigation_scope import discovery_scope
 from app.modules.aws.topology.builder import AwsTopologyBuilder
+from app.observability.collector import ObservabilityCollector
 
 ProgressCallback = Callable[[str, int], Awaitable[None] | None]
 
@@ -56,7 +58,8 @@ AWS_STEP_PROGRESS = {
     "Topology": 58,
     "CloudWatch": 66,
     "CloudTrail": 74,
-    "AWS Config": 86,
+    "AWS Config": 82,
+    "Observability": 90,
     "AI Diagnosis": 100,
 }
 
@@ -87,6 +90,7 @@ class AWSInvestigationService:
     def __init__(self) -> None:
         self.account_discovery = AwsAccountDiscovery()
         self.root_cause_analyzer = AwsRootCauseAnalyzer()
+        self.observability_collector = ObservabilityCollector()
 
     async def _report_progress(
         self,
@@ -305,6 +309,23 @@ class AWSInvestigationService:
             )
             deployment_correlation = await scoped.deployment_correlation_collector.collect()
 
+            await self._report_progress(on_progress, "Observability")
+            search_hints = [
+                request.account_id,
+                request.region,
+                *[inst.instance_id for inst in instances[:8] if getattr(inst, "instance_id", None)],
+                *[
+                    (inst.name or "")
+                    for inst in instances[:8]
+                    if getattr(inst, "name", None)
+                ],
+            ]
+            observability = await self.observability_collector.collect(
+                request.account_id or "",
+                user_id=user_id,
+                agent_type="aws",
+                search_hints=[hint for hint in search_hints if hint],
+            )
 
             investigation = AwsInvestigationContext(
                 account_id=request.account_id,
@@ -325,16 +346,18 @@ class AWSInvestigationService:
                     "elastic_ips": len(elastic_ips),
                     "topology_nodes": len(topology.nodes),
                     "topology_relationships": len(topology.relationships),
+                    "observability_findings": len(observability.findings),
                 },
                 notes=notes,
             )
 
             logger.info(
-                "AWS investigation completed | account={} region={} instances={} relationships={}",
+                "AWS investigation completed | account={} region={} instances={} relationships={} obs_findings={}",
                 request.account_id,
                 request.region,
                 len(instances),
                 len(topology.relationships),
+                len(observability.findings),
             )
 
             response = AwsInvestigationResponse(
@@ -346,6 +369,7 @@ class AWSInvestigationService:
                 cloudtrail=cloudtrail,
                 aws_config=aws_config,
                 deployment_correlation=deployment_correlation,
+                observability=observability,
                 investigation=investigation,
             )
 
@@ -402,6 +426,7 @@ class AWSInvestigationService:
             cloudtrail=AwsCloudTrailResult(collected=False),
             aws_config=AwsConfigResult(enabled=False, error=error),
             deployment_correlation=AwsDeploymentCorrelationResult(),
+            observability=ObservabilityResult(),
             investigation=AwsInvestigationContext(
                 account_id=request.account_id,
                 region=request.region,

@@ -222,6 +222,49 @@ class UserQdrantIntegration(Base):
 
 
 
+
+
+class UserPrometheusIntegration(Base):
+    __tablename__ = "user_prometheus_integrations"
+
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    url: Mapped[str] = mapped_column(String(512), nullable=False, default="")
+    bearer_token: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    basic_auth_user: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    basic_auth_password: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    use_kubernetes: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+
+class UserGrafanaIntegration(Base):
+    __tablename__ = "user_grafana_integrations"
+
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    url: Mapped[str] = mapped_column(String(512), nullable=False, default="")
+    api_token: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    use_kubernetes: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
 class UserAwsIntegration(Base):
     """Per-user toggle for AWS multi-account (STS AssumeRole) catalog."""
 

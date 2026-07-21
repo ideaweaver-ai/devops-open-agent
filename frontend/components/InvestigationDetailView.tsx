@@ -8,6 +8,7 @@ import { AwsInvestigationResults } from "@/components/aws/AwsInvestigationResult
 import { formatLlmProviderLabel } from "@/components/LlmProviderBadge";
 import { formatAgentType } from "@/lib/platform";
 import { TopologyPlaceholder } from "@/components/TopologyPlaceholder";
+import { ObservabilityEvidencePanel } from "@/components/ObservabilityEvidencePanel";
 import {
   useInvestigationResult,
   useInvestigationStatus,
@@ -189,9 +190,15 @@ export function InvestigationDetailView({
           ) : isCloudCost && cloudCostResult ? (
             <CloudCostInvestigationResults data={cloudCostResult} />
           ) : (
-            <TopologyPlaceholder
-              relationships={kubernetesResult?.topology?.relationships ?? []}
-            />
+            <>
+              <ObservabilityEvidencePanel
+                data={kubernetesResult?.observability}
+                className="mb-6"
+              />
+              <TopologyPlaceholder
+                relationships={kubernetesResult?.topology?.relationships ?? []}
+              />
+            </>
           )}
         </>
       )}

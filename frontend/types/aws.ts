@@ -1,4 +1,5 @@
 import type { DiagnosisResult } from "@/types/investigation";
+import type { ObservabilityResult } from "@/types/observability";
 
 export type CloudWatchWindow = "1h" | "24h" | "7d";
 
@@ -332,6 +333,7 @@ export interface AwsInvestigationResponse {
   cloudtrail: AwsCloudTrailResult;
   aws_config: AwsConfigResult;
   deployment_correlation: AwsDeploymentCorrelationResult;
+  observability?: ObservabilityResult | null;
   investigation: AwsInvestigationContext;
   diagnosis?: DiagnosisResult | null;
   error?: string | null;

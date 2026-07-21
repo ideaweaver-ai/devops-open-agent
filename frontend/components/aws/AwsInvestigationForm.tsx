@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import type { AwsAccountSummary, AwsIssueType, AwsRegionInfo, CloudWatchWindow } from "@/types/aws";
 import { AwsAccountSelector } from "@/components/aws/AwsAccountSelector";
 import { AWS_ISSUE_TYPES } from "@/lib/awsIssueTypes";
@@ -20,6 +21,8 @@ const SUPPORTED_AWS_SERVICES = [
   "Auto Scaling",
   "CloudWatch",
   "CloudTrail",
+  "Prometheus",
+  "Grafana",
 ] as const;
 
 interface AwsInvestigationFormProps {
@@ -45,6 +48,9 @@ interface AwsInvestigationFormProps {
   includeRag?: boolean;
   onIncludeRagChange?: (value: boolean) => void;
   ragAvailable?: boolean;
+  prometheusEnabled?: boolean;
+  grafanaEnabled?: boolean;
+  observabilityLoading?: boolean;
 }
 
 export function AwsInvestigationForm({
@@ -70,7 +76,12 @@ export function AwsInvestigationForm({
   includeRag = false,
   onIncludeRagChange,
   ragAvailable = false,
+  prometheusEnabled = false,
+  grafanaEnabled = false,
+  observabilityLoading = false,
 }: AwsInvestigationFormProps) {
+  const observabilityReady = prometheusEnabled || grafanaEnabled;
+
   return (
     <div className="panel-accent p-6">
       <div className="mb-5 flex items-center gap-3 border-b border-slate-200 pb-4">
@@ -87,7 +98,8 @@ export function AwsInvestigationForm({
         <div>
           <h2 className="panel-title">Troubleshoot AWS Infrastructure</h2>
           <p className="text-xs text-slate-600">
-            Discover EC2, Lambda, S3, networking, and load balancers — then run AI analysis
+            Discover EC2, Lambda, S3, networking, and load balancers — enrich with
+            Prometheus/Grafana metrics — then run AI analysis
           </p>
         </div>
       </div>
@@ -103,6 +115,63 @@ export function AwsInvestigationForm({
               {service}
             </span>
           ))}
+        </div>
+      </div>
+
+      <div
+        className={`mb-5 rounded-xl border px-4 py-3 ${
+          observabilityReady
+            ? "border-emerald-200 bg-emerald-50"
+            : "border-slate-200 bg-slate-50"
+        }`}
+      >
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-sm font-medium text-slate-900">
+              Observability evidence (Prometheus / Grafana)
+            </p>
+            <p className="mt-1 text-xs text-slate-600">
+              {observabilityLoading
+                ? "Checking integration status..."
+                : observabilityReady
+                  ? "Enabled integrations are collected automatically during each AWS investigation (host CPU, load, memory, dashboards). Findings appear under the Observability results tab."
+                  : "Not configured yet. Connect Prometheus and/or Grafana so investigations can include live metrics (for example EC2 CPU stress from Alloy)."}
+            </p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <span
+                className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
+                  prometheusEnabled
+                    ? "border-emerald-300 bg-emerald-100 text-emerald-800"
+                    : "border-slate-300 bg-white text-slate-500"
+                }`}
+              >
+                Prometheus {prometheusEnabled ? "on" : "off"}
+              </span>
+              <span
+                className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
+                  grafanaEnabled
+                    ? "border-emerald-300 bg-emerald-100 text-emerald-800"
+                    : "border-slate-300 bg-white text-slate-500"
+                }`}
+              >
+                Grafana {grafanaEnabled ? "on" : "off"}
+              </span>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Link
+              href="/integrations/prometheus"
+              className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50"
+            >
+              Configure Prometheus
+            </Link>
+            <Link
+              href="/integrations/grafana"
+              className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50"
+            >
+              Configure Grafana
+            </Link>
+          </div>
         </div>
       </div>
 
