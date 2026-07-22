@@ -11,6 +11,7 @@ export function formatLlmProviderLabel(provider: string | null | undefined): str
     anthropic: "Anthropic",
     openrouter: "OpenRouter",
     gemini: "Google Gemini",
+    bedrock: "AWS Bedrock",
   };
 
   return labels[provider.toLowerCase()] ?? provider;
@@ -28,6 +29,8 @@ function providerStyles(provider: string): string {
       return "border-sky-500/25 bg-sky-500/10 text-sky-200";
     case "gemini":
       return "border-blue-500/25 bg-blue-500/10 text-blue-200";
+    case "bedrock":
+      return "border-amber-500/25 bg-amber-500/10 text-amber-200";
     default:
       return "border-slate-500/25 bg-slate-500/10 text-slate-200";
   }

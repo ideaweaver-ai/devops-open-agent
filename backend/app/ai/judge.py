@@ -241,6 +241,7 @@ class DiagnosisJudge:
             "openrouter": self.settings.judge_openrouter_model,
             "gemini": self.settings.judge_gemini_model,
             "ollama": self.settings.judge_ollama_model,
+            "bedrock": self.settings.judge_bedrock_model,
         }
         return model_map.get(provider_name, "")
 

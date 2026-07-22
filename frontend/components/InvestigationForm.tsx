@@ -9,6 +9,7 @@ const JUDGE_PROVIDERS = [
   { value: "anthropic", label: "Anthropic" },
   { value: "gemini", label: "Google Gemini" },
   { value: "openrouter", label: "OpenRouter" },
+  { value: "bedrock", label: "AWS Bedrock" },
   { value: "ollama", label: "Ollama (local)" },
 ] as const;
 
@@ -17,6 +18,7 @@ const JUDGE_MODEL_HINTS: Record<string, string> = {
   anthropic: "e.g. claude-sonnet-4-20250514",
   gemini: "e.g. gemini-2.0-flash",
   openrouter: "e.g. openai/gpt-4o-mini",
+  bedrock: "e.g. anthropic.claude-3-5-sonnet-20241022-v2:0",
   ollama: "e.g. llama3.1, gemma3",
 };
 
