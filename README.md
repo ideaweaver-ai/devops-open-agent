@@ -51,7 +51,7 @@ The demo covers:
 - **Frontend:** Next.js 15, TypeScript, Tailwind CSS, TanStack Query
 - **Runtime:** Docker Compose
 
-Supported LLM providers: OpenAI, Anthropic, OpenRouter, Google Gemini, Ollama — see [LLM Supported](#llm-supported).
+Supported LLM providers: OpenAI, Anthropic, OpenRouter, Google Gemini, AWS Bedrock, Ollama — see [LLM Supported](#llm-supported).
 
 ## Quick Install
 
@@ -233,6 +233,7 @@ Configure one provider in `backend/.env` — every investigation, diagnosis, and
 | **Anthropic** | `anthropic` | `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL` |
 | **OpenRouter** | `openrouter` | `OPENROUTER_API_KEY`, `OPENROUTER_MODEL` |
 | **Google Gemini** | `gemini` | `GEMINI_API_KEY`, `GEMINI_MODEL` |
+| **AWS Bedrock** | `bedrock` | `BEDROCK_MODEL`, optional `BEDROCK_REGION` / `BEDROCK_AWS_PROFILE` (uses AWS credential chain) |
 
 Example (`backend/.env`):
 
@@ -251,7 +252,24 @@ ANTHROPIC_MODEL=claude-sonnet-4-6
 # LLM_PROVIDER=gemini
 # GEMINI_API_KEY=...
 # GEMINI_MODEL=gemini-2.0-flash
+
+# AWS Bedrock (Claude / Llama / etc. via Converse API)
+# Enable model access in the Bedrock console for your account/region.
+# Prefer an inference profile ID when the base model requires it
+# (e.g. us.anthropic.claude-sonnet-4-6).
+# LLM_PROVIDER=bedrock
+# BEDROCK_MODEL=anthropic.claude-3-5-sonnet-20241022-v2:0
+# BEDROCK_REGION=us-west-2
+# BEDROCK_AWS_PROFILE=   # optional; otherwise AWS_PROFILE / default chain
 ```
+
+IAM needs at least `bedrock:InvokeModel` (and `bedrock:InvokeModelWithResponseStream` if streaming is used later). To discover available TEXT models with your credentials:
+
+```bash
+curl -s -H "Authorization: Bearer <token>" \
+  http://localhost:8000/api/v1/system/llm/bedrock/models | jq .
+```
+
 
 After changing provider settings, recreate the backend so `backend/.env` is reloaded:
 

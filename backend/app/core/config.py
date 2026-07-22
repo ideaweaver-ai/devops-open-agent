@@ -35,6 +35,12 @@ class Settings(BaseSettings):
     openrouter_model: str = "openai/gpt-4o-mini"
 
     gemini_api_key: str = ""
+
+    # AWS Bedrock (uses default AWS credential chain / AWS_PROFILE)
+    bedrock_model: str = "anthropic.claude-3-5-sonnet-20241022-v2:0"
+    bedrock_region: str = ""
+    bedrock_aws_profile: str = ""
+
     gemini_model: str = "gemini-2.0-flash"
 
     ollama_base_url: str = "http://localhost:11434"
@@ -51,6 +57,7 @@ class Settings(BaseSettings):
     judge_anthropic_model: str = ""
     judge_openrouter_model: str = ""
     judge_gemini_model: str = ""
+    judge_bedrock_model: str = ""
     judge_ollama_model: str = ""
 
     kubeconfig_path: str = ""

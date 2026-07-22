@@ -55,6 +55,12 @@ class ReadinessService:
             return bool(self.settings.openrouter_api_key and self.settings.openrouter_model)
         if provider_name == "gemini":
             return bool(self.settings.gemini_api_key and self.settings.gemini_model)
+        if provider_name == "bedrock":
+            region = (
+                self.settings.bedrock_region.strip()
+                or self.settings.aws_default_region.strip()
+            )
+            return bool(self.settings.bedrock_model.strip() and region)
 
         try:
             LLMProviderFactory.create(settings=self.settings)
