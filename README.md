@@ -224,9 +224,22 @@ curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stabl
 All agent modules (Kubernetes, AWS, Cloud Cost, PR Reviewer, Performance Debugging, Security Scanning) use a **shared LLM layer**.  
 Configure one provider in `backend/.env` — every investigation, diagnosis, and PR review uses it. Kubernetes investigations can optionally use a **separate provider/model for LLM-as-a-Judge** verification (see [LLM-as-a-Judge](#llm-as-a-judge-ai-verification)).
 
-### LLM Usage & Cost
+![LLM provider architecture — DevOps Open Agent to Ollama, OpenAI, Anthropic, OpenRouter, and Google Gemini](img/llm-provider-diagram.png?v=gemini)
 
-DevOps Open Agent meters token usage across the shared LLM layer and shows estimated spend in the UI.
+| Provider | `LLM_PROVIDER` | Configure in `backend/.env` |
+|----------|--------------|-------------------------------|
+| **Ollama** | `ollama` | `OLLAMA_BASE_URL`, `OLLAMA_MODEL` — local / self-hosted |
+| **OpenAI** | `openai` | `OPENAI_API_KEY`, `OPENAI_MODEL` |
+| **Anthropic** | `anthropic` | `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL` |
+| **OpenRouter** | `openrouter` | `OPENROUTER_API_KEY`, `OPENROUTER_MODEL` |
+| **Google Gemini** | `gemini` | `GEMINI_API_KEY`, `GEMINI_MODEL` |
+| **AWS Bedrock** | `bedrock` | `BEDROCK_MODEL`, optional `BEDROCK_REGION` / `BEDROCK_AWS_PROFILE` (uses AWS credential chain) |
+
+## LLM Usage & Cost
+
+DevOps Open Agent meters token usage across the shared LLM layer and shows estimated spend in the UI — so teams can see what AI analysis is costing and get alerted before spend surprises finance.
+
+![LLM cost visibility for DevOps Open Agent](img/llm-cost-visibility-devops-open-agent.png)
 
 | Surface | What you get |
 |---------|----------------|
@@ -243,17 +256,6 @@ DevOps Open Agent meters token usage across the shared LLM layer and shows estim
 - Budget alerts require Slack and/or Teams to be enabled under Integrations. Alerts use today’s UTC spend across **all** providers, not per-model.
 
 **Audit log:** open **Audit** in the sidebar (`/audit`) to see who started investigations and who changed integration settings.
-
-![LLM provider architecture — DevOps Open Agent to Ollama, OpenAI, Anthropic, OpenRouter, and Google Gemini](img/llm-provider-diagram.png?v=gemini)
-
-| Provider | `LLM_PROVIDER` | Configure in `backend/.env` |
-|----------|--------------|-------------------------------|
-| **Ollama** | `ollama` | `OLLAMA_BASE_URL`, `OLLAMA_MODEL` — local / self-hosted |
-| **OpenAI** | `openai` | `OPENAI_API_KEY`, `OPENAI_MODEL` |
-| **Anthropic** | `anthropic` | `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL` |
-| **OpenRouter** | `openrouter` | `OPENROUTER_API_KEY`, `OPENROUTER_MODEL` |
-| **Google Gemini** | `gemini` | `GEMINI_API_KEY`, `GEMINI_MODEL` |
-| **AWS Bedrock** | `bedrock` | `BEDROCK_MODEL`, optional `BEDROCK_REGION` / `BEDROCK_AWS_PROFILE` (uses AWS credential chain) |
 
 Example (`backend/.env`):
 
