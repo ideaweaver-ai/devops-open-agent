@@ -19,6 +19,7 @@ INVESTIGATION_STEPS = [
     "Deployment Inspection",
     "Network Inspection",
     "Topology Extraction",
+    "Observability Collection",
     "AI Diagnosis",
     "AI Verification",
 ]
@@ -67,6 +68,10 @@ class InvestigationHistoryItem(BaseModel):
     created_at: datetime
     root_cause: str | None = None
     confidence: int | None = None
+    llm_input_tokens: int = 0
+    llm_output_tokens: int = 0
+    llm_estimated_cost_usd: float | None = None
+    llm_call_count: int = 0
 
 
 class InvestigationHistoryResponse(BaseModel):
@@ -81,4 +86,5 @@ class InvestigationResultResponse(BaseModel):
     aws_result: AwsInvestigationResponse | None = None
     cloud_cost_result: CloudCostInvestigationResponse | None = None
     diagnosis: DiagnosisResult | None = None
+    llm_usage: dict | None = None
     error: str | None = None

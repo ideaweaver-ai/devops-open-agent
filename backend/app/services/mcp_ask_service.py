@@ -11,10 +11,13 @@ from loguru import logger
 from app.ai.json_utils import extract_json_object
 from app.ai.llm_factory import LLMProviderFactory
 from app.ai.providers.exceptions import LLMProviderError
+from app.ai.usage import UsageTracker
 from app.core.config import get_settings
 from app.db.session import SessionLocal
 from app.integrations.mcp.client import McpClient, McpClientError
+from app.services.llm_usage_service import persist_usage_session
 from app.services.mcp_settings_service import McpSettingsService
+from app.storage.factory import get_llm_usage_store
 
 MAX_TOOL_ROUNDS = 3
 MAX_TOOL_CATALOG = 40
@@ -48,68 +51,80 @@ class McpAskService:
 
         tools_used: list[dict[str, Any]] = []
         tool_results: list[dict[str, Any]] = []
+        usage_store = get_llm_usage_store()
+        await usage_store.initialize()
 
-        async def run_session(mcp_session) -> str:
-            tools_result = await mcp_session.list_tools()
-            catalog = self._build_tool_catalog(tools_result.tools)
+        with UsageTracker.session(
+            scope_type="mcp_ask",
+            scope_id=str(user_id),
+            user_id=str(user_id),
+            agent_type="mcp",
+            default_call_kind="mcp_ask",
+        ) as usage_session:
 
-            for round_index in range(MAX_TOOL_ROUNDS):
-                plan = await self._plan_next_step(trimmed, catalog, tool_results)
-                action = plan.get("action", "answer")
+            async def run_session(mcp_session) -> str:
+                tools_result = await mcp_session.list_tools()
+                catalog = self._build_tool_catalog(tools_result.tools)
 
-                if action == "answer":
-                    answer = (plan.get("answer") or "").strip()
-                    if answer:
-                        return answer
-                    break
+                for round_index in range(MAX_TOOL_ROUNDS):
+                    plan = await self._plan_next_step(trimmed, catalog, tool_results)
+                    action = plan.get("action", "answer")
 
-                tool_name = (plan.get("tool_name") or "").strip()
-                arguments = plan.get("arguments") or {}
-                if not tool_name:
-                    break
+                    if action == "answer":
+                        answer = (plan.get("answer") or "").strip()
+                        if answer:
+                            return answer
+                        break
 
-                if not any(tool["name"] == tool_name for tool in catalog):
-                    tool_results.append(
-                        {
-                            "tool_name": tool_name,
-                            "error": f"Unknown tool: {tool_name}",
-                        }
-                    )
-                    continue
+                    tool_name = (plan.get("tool_name") or "").strip()
+                    arguments = plan.get("arguments") or {}
+                    if not tool_name:
+                        break
 
-                try:
-                    result = await mcp_session.call_tool(tool_name, arguments)
-                    formatted = self.client.format_tool_result(result)
-                except Exception as exc:
-                    formatted = f"Tool call failed: {exc}"
+                    if not any(tool["name"] == tool_name for tool in catalog):
+                        tool_results.append(
+                            {
+                                "tool_name": tool_name,
+                                "error": f"Unknown tool: {tool_name}",
+                            }
+                        )
+                        continue
 
-                summary = formatted[:4000]
-                tools_used.append(
-                    {
-                        "tool_name": tool_name,
-                        "arguments": arguments,
-                        "result_summary": summary,
-                    }
-                )
-                tool_results.append(
-                    {
-                        "tool_name": tool_name,
-                        "arguments": arguments,
-                        "result": summary,
-                    }
-                )
-                logger.info(
-                    "MCP ask tool call | round={} tool={}",
-                    round_index + 1,
-                    tool_name,
-                )
+                    try:
+                        result = await mcp_session.call_tool(tool_name, arguments)
+                        summary = self.client.format_tool_result(result)[:4000]
+                        tools_used.append({"name": tool_name, "arguments": arguments})
+                        tool_results.append(
+                            {
+                                "tool_name": tool_name,
+                                "arguments": arguments,
+                                "result": summary,
+                            }
+                        )
+                    except Exception as exc:  # noqa: BLE001
+                        logger.warning("MCP tool call failed | tool={} error={}", tool_name, exc)
+                        tool_results.append(
+                            {
+                                "tool_name": tool_name,
+                                "arguments": arguments,
+                                "error": str(exc),
+                            }
+                        )
 
-            return await self._synthesize_answer(trimmed, tool_results)
+                return await self._synthesize_answer(trimmed, tool_results)
 
-        answer = await self.client.execute(server_url, api_key, run_session)
+            answer = await self.client.execute(
+                server_url,
+                api_key,
+                run_session,
+            )
+            await persist_usage_session(usage_store, usage_session)
+
         return {
             "answer": answer,
             "tools_used": tools_used,
+            "tool_results": tool_results,
+            "llm_usage": usage_session.summary_dict(),
         }
 
     def _build_tool_catalog(self, tools: list[Any]) -> list[dict[str, Any]]:

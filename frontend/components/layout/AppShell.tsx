@@ -10,12 +10,17 @@ import {
   getActiveIntegration,
   PLATFORM,
   PLATFORM_AGENTS,
+  PLATFORM_AUDIT,
   PLATFORM_INTEGRATIONS,
+  PLATFORM_USAGE,
 } from "@/lib/platform";
 
 function isNavActive(pathname: string, href: string): boolean {
   if (href === "/") {
     return pathname === "/";
+  }
+  if (href === "/usage") {
+    return pathname === "/usage";
   }
   return pathname.startsWith(href);
 }
@@ -101,6 +106,13 @@ const AGENT_ICONS: Record<string, ReactNode> = {
 };
 
 function getPageTitle(pathname: string, sectionName: string): string {
+  if (PLATFORM_USAGE.matchesPath(pathname)) {
+    const item = PLATFORM_USAGE.nav.find((nav) => isNavActive(pathname, nav.href));
+    return item?.label === "Overview" ? PLATFORM_USAGE.name : item?.label ?? PLATFORM_USAGE.name;
+  }
+  if (PLATFORM_AUDIT.matchesPath(pathname)) {
+    return PLATFORM_AUDIT.name;
+  }
   const integration = getActiveIntegration(pathname);
   if (integration) {
     const item = integration.nav.find((nav) => isNavActive(pathname, nav.href));
@@ -116,8 +128,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
   const activeAgent = getActiveAgent(pathname);
   const activeIntegration = getActiveIntegration(pathname);
-  const sectionName = activeIntegration?.name ?? activeAgent.name;
-  const subNav = activeIntegration?.nav ?? activeAgent.nav;
+  const activeUsage = PLATFORM_USAGE.matchesPath(pathname);
+  const activeAudit = PLATFORM_AUDIT.matchesPath(pathname);
+  const sectionName = activeUsage
+    ? PLATFORM_USAGE.name
+    : activeAudit
+      ? PLATFORM_AUDIT.name
+      : activeIntegration?.name ?? activeAgent.name;
+  const subNav = activeUsage
+    ? [...PLATFORM_USAGE.nav]
+    : activeIntegration?.nav ?? activeAgent.nav;
   const pageTitle = getPageTitle(pathname, sectionName);
   const userInitials = user?.email?.slice(0, 2).toUpperCase() ?? "DO";
 
@@ -164,7 +184,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <ul className="space-y-0.5">
               {PLATFORM_AGENTS.map((agent) => {
                 const isActive =
-                  !activeIntegration && activeAgent.id === agent.id;
+                  !activeIntegration &&
+                  !activeUsage &&
+                  !activeAudit &&
+                  activeAgent.id === agent.id;
                 return (
                   <li key={agent.id}>
                     <Link
@@ -191,7 +214,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                         </span>
                       )}
                     </Link>
-                    {isActive && subNav.length > 0 && !activeIntegration && (
+                    {isActive && subNav.length > 0 && !activeIntegration && !activeUsage && !activeAudit && (
                       <ul className="ml-11 mt-1 space-y-0.5 border-l border-slate-700/60 pl-3">
                         {subNav.map((item) => {
                           const active = isNavActive(pathname, item.href);
@@ -224,6 +247,90 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               Platform
             </p>
             <ul className="space-y-0.5">
+              <li>
+                <Link
+                  href={PLATFORM_USAGE.href}
+                  className={`group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
+                    activeUsage
+                      ? "bg-brand-600/90 text-white shadow-sm"
+                      : "text-slate-300 hover:bg-sidebar-hover hover:text-white"
+                  }`}
+                >
+                  <span
+                    className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
+                      activeUsage
+                        ? "bg-white/15 text-white"
+                        : "bg-slate-800/80 text-slate-400 group-hover:text-slate-200"
+                    }`}
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" aria-hidden>
+                      <path
+                        d="M4 19V5M4 19h16"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                      />
+                      <path
+                        d="M8 15l3-4 3 2 4-6"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </span>
+                  <span>{PLATFORM_USAGE.name}</span>
+                </Link>
+                {activeUsage && (
+                  <ul className="ml-11 mt-1 space-y-0.5 border-l border-slate-700/60 pl-3">
+                    {PLATFORM_USAGE.nav.map((item) => {
+                      const active = isNavActive(pathname, item.href);
+                      return (
+                        <li key={item.href}>
+                          <Link
+                            href={item.href}
+                            className={`block rounded-md px-2.5 py-1.5 text-xs transition ${
+                              active
+                                ? "bg-white/15 font-semibold text-white"
+                                : "text-slate-200 hover:bg-white/10 hover:text-white"
+                            }`}
+                          >
+                            {item.label}
+                          </Link>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </li>
+              <li>
+                <Link
+                  href={PLATFORM_AUDIT.href}
+                  className={`group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
+                    activeAudit
+                      ? "bg-brand-600/90 text-white shadow-sm"
+                      : "text-slate-300 hover:bg-sidebar-hover hover:text-white"
+                  }`}
+                >
+                  <span
+                    className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
+                      activeAudit
+                        ? "bg-white/15 text-white"
+                        : "bg-slate-800/80 text-slate-400 group-hover:text-slate-200"
+                    }`}
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" aria-hidden>
+                      <path
+                        d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                      />
+                    </svg>
+                  </span>
+                  <span>{PLATFORM_AUDIT.name}</span>
+                </Link>
+              </li>
               <li>
                 <Link
                   href={PLATFORM_INTEGRATIONS.href}

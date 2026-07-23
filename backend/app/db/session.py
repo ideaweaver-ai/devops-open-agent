@@ -36,6 +36,30 @@ async def init_auth_db() -> None:
         await connection.execute(
             text(
                 """
+                ALTER TABLE users
+                ADD COLUMN IF NOT EXISTS must_change_password BOOLEAN NOT NULL DEFAULT FALSE
+                """
+            )
+        )
+        await connection.execute(
+            text(
+                """
+                ALTER TABLE users
+                ADD COLUMN IF NOT EXISTS llm_daily_budget_usd DOUBLE PRECISION
+                """
+            )
+        )
+        await connection.execute(
+            text(
+                """
+                ALTER TABLE users
+                ADD COLUMN IF NOT EXISTS llm_budget_alert_date VARCHAR(16)
+                """
+            )
+        )
+        await connection.execute(
+            text(
+                """
                 ALTER TABLE user_pagerduty_integrations
                 ADD COLUMN IF NOT EXISTS notification_cooldown_minutes INTEGER NOT NULL DEFAULT 60
                 """

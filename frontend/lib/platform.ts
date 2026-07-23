@@ -32,7 +32,8 @@ export const PLATFORM_INTEGRATIONS: PlatformIntegration = {
   id: "integrations",
   name: "Integrations",
   href: "/integrations/slack",
-  description: "Connect DevOps Open Agent with Slack, Teams, PagerDuty, MCP, Qdrant, Prometheus, Grafana, and AWS Accounts.",
+  description:
+    "Connect DevOps Open Agent with Slack, Teams, PagerDuty, MCP, Qdrant, Prometheus, Grafana, Splunk, and AWS Accounts.",
   nav: [
     { href: "/integrations/slack", label: "Slack" },
     { href: "/integrations/teams", label: "Microsoft Teams" },
@@ -41,10 +42,33 @@ export const PLATFORM_INTEGRATIONS: PlatformIntegration = {
     { href: "/integrations/qdrant", label: "Qdrant (RAG)" },
     { href: "/integrations/prometheus", label: "Prometheus" },
     { href: "/integrations/grafana", label: "Grafana" },
+    { href: "/integrations/splunk", label: "Splunk" },
     { href: "/integrations/aws", label: "AWS Accounts" },
   ],
   matchesPath: (pathname) => pathname.startsWith("/integrations"),
 };
+
+/** Platform-level Cost / Usage dashboard (not an agent). */
+export const PLATFORM_USAGE = {
+  id: "usage",
+  name: "Usage",
+  href: "/usage",
+  description: "LLM token usage and estimated cost across the platform.",
+  matchesPath: (pathname: string) => pathname.startsWith("/usage"),
+  nav: [
+    { href: "/usage", label: "Overview" },
+    { href: "/usage/pricing", label: "Pricing" },
+  ],
+} as const;
+
+/** Platform audit log (who ran investigations / changed integrations). */
+export const PLATFORM_AUDIT = {
+  id: "audit",
+  name: "Audit",
+  href: "/audit",
+  description: "Structured audit trail for investigations and integration changes.",
+  matchesPath: (pathname: string) => pathname.startsWith("/audit"),
+} as const;
 
 export const PLATFORM_AGENTS: PlatformAgent[] = [
   {
@@ -142,6 +166,9 @@ export function getActiveIntegration(pathname: string): PlatformIntegration | nu
 }
 
 export function getActiveSectionName(pathname: string): string {
+  if (PLATFORM_USAGE.matchesPath(pathname)) {
+    return PLATFORM_USAGE.name;
+  }
   const integration = getActiveIntegration(pathname);
   if (integration) {
     return integration.name;

@@ -10,6 +10,7 @@ from __future__ import annotations
 import httpx
 from loguru import logger
 
+from app.ai.usage import UsageTracker
 from app.core.config import Settings, get_settings
 
 _EMBEDDING_PROVIDERS = {"openai", "gemini", "ollama"}
@@ -87,7 +88,20 @@ class EmbeddingClient:
                 f"OpenAI embeddings error ({response.status_code}): {response.text[:200]}"
             )
         try:
-            return response.json()["data"][0]["embedding"]
+            payload = response.json()
+            usage = payload.get("usage") or {}
+            total = int(usage.get("total_tokens") or usage.get("prompt_tokens") or 0)
+            if total <= 0:
+                total = max(1, len(text) // 4)
+            UsageTracker.record(
+                provider="openai",
+                model=self.model,
+                input_tokens=total,
+                output_tokens=0,
+                total_tokens=total,
+                call_kind="embedding",
+            )
+            return payload["data"][0]["embedding"]
         except (KeyError, IndexError, TypeError) as exc:
             raise EmbeddingError("OpenAI returned a malformed embeddings response") from exc
 
@@ -111,7 +125,18 @@ class EmbeddingClient:
                 f"Gemini embeddings error ({response.status_code}): {response.text[:200]}"
             )
         try:
-            return response.json()["embedding"]["values"]
+            payload = response.json()
+            # Gemini embedContent often omits usage; estimate from input length.
+            estimated = max(1, len(text) // 4)
+            UsageTracker.record(
+                provider="gemini",
+                model=self.model,
+                input_tokens=estimated,
+                output_tokens=0,
+                total_tokens=estimated,
+                call_kind="embedding",
+            )
+            return payload["embedding"]["values"]
         except (KeyError, TypeError) as exc:
             raise EmbeddingError("Gemini returned a malformed embeddings response") from exc
 
@@ -130,7 +155,8 @@ class EmbeddingClient:
                 f"Ollama embeddings error ({response.status_code}): {response.text[:200]}"
             )
         try:
-            embedding = response.json()["embedding"]
+            payload = response.json()
+            embedding = payload["embedding"]
         except (KeyError, TypeError) as exc:
             raise EmbeddingError("Ollama returned a malformed embeddings response") from exc
         if not embedding:
@@ -138,4 +164,13 @@ class EmbeddingClient:
                 f"Ollama model '{self.model}' returned an empty embedding. "
                 "Pull an embedding model (e.g. `ollama pull nomic-embed-text`)."
             )
+        estimated = int(payload.get("prompt_eval_count") or max(1, len(text) // 4))
+        UsageTracker.record(
+            provider="ollama",
+            model=self.model,
+            input_tokens=estimated,
+            output_tokens=0,
+            total_tokens=estimated,
+            call_kind="embedding",
+        )
         return embedding

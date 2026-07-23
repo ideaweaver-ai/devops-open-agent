@@ -4,10 +4,13 @@ from __future__ import annotations
 
 from loguru import logger
 
+from app.ai.usage import UsageTracker
 from app.modules.security.ai.analyzer import SecurityAnalyzer
 from app.modules.security.models import ScanType, SecurityScanRequest
 from app.modules.security.scanner import TrivyScanner
 from app.modules.security.store import SecurityScanStore, get_security_scan_store
+from app.services.llm_usage_service import persist_usage_session
+from app.storage.factory import get_llm_usage_store
 
 
 def _safe_error(exc: Exception) -> str:
@@ -90,10 +93,20 @@ class SecurityScanService:
                     progress_percentage=65,
                 )
                 try:
-                    analysis = await self.analyzer.analyze_scan(
-                        scan_results,
-                        request.scan_type.value,
-                    )
+                    usage_store = get_llm_usage_store()
+                    await usage_store.initialize()
+                    with UsageTracker.session(
+                        scope_type="security",
+                        scope_id=scan_id,
+                        user_id=record.get("user_id"),
+                        agent_type="security",
+                        default_call_kind="security",
+                    ) as usage_session:
+                        analysis = await self.analyzer.analyze_scan(
+                            scan_results,
+                            request.scan_type.value,
+                        )
+                        await persist_usage_session(usage_store, usage_session)
                     ai_analysis = analysis.get("ai_analysis")
                     llm_provider = analysis.get("llm_provider")
                 except Exception as exc:  # noqa: BLE001

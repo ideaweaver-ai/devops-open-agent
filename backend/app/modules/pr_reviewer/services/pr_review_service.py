@@ -5,6 +5,7 @@ from __future__ import annotations
 from loguru import logger
 
 from app.core.errors import sanitize_error_message
+from app.ai.usage import UsageTracker
 from app.modules.pr_reviewer.ai.review_analyzer import PrReviewAnalyzer
 from app.modules.pr_reviewer.ai.review_formatter import format_review_markdown
 from app.modules.pr_reviewer.github.github_client import GitHubClient, GitHubClientError
@@ -12,7 +13,8 @@ from app.modules.pr_reviewer.models.schemas import PrWebhookPayload
 from app.notifications.pagerduty_notification_service import pagerduty_notification_service
 from app.notifications.slack_notification_service import slack_notification_service
 from app.notifications.teams_notification_service import teams_notification_service
-from app.storage.factory import get_pr_review_store
+from app.services.llm_usage_service import persist_usage_session
+from app.storage.factory import get_llm_usage_store, get_pr_review_store
 from app.storage.pr_review_store import PrReviewStore
 
 
@@ -137,7 +139,17 @@ class PrReviewService:
                 await self.store.update_mcp_context(review_id, mcp_context)
 
             await self._set_step(review_id, "running_ai_review")
-            analysis = await self.analyzer.analyze(pr, usable_files, mcp_context=mcp_context)
+            usage_store = get_llm_usage_store()
+            await usage_store.initialize()
+            with UsageTracker.session(
+                scope_type="pr_review",
+                scope_id=review_id,
+                user_id=user_id,
+                agent_type="pr_reviewer",
+                default_call_kind="pr_review",
+            ) as usage_session:
+                analysis = await self.analyzer.analyze(pr, usable_files, mcp_context=mcp_context)
+                await persist_usage_session(usage_store, usage_session)
             review_markdown = format_review_markdown(analysis)
 
             await self._set_step(review_id, "posting_github_comment")

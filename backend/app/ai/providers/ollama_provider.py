@@ -9,6 +9,7 @@ from app.ai.providers.exceptions import (
     LLMProviderError,
     LLMTimeoutError,
 )
+from app.ai.usage import UsageTracker
 
 
 class OllamaProvider(BaseLLMProvider):
@@ -54,6 +55,12 @@ class OllamaProvider(BaseLLMProvider):
             raise LLMProviderError(f"Ollama API error ({response.status_code}): {response.text}")
 
         data = response.json()
+        UsageTracker.record(
+            provider="ollama",
+            model=self.model,
+            input_tokens=int(data.get("prompt_eval_count") or 0),
+            output_tokens=int(data.get("eval_count") or 0),
+        )
         try:
             return data["message"]["content"]
         except (KeyError, TypeError) as exc:

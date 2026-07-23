@@ -1,4 +1,5 @@
 from datetime import datetime
+import json
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 
@@ -13,6 +14,7 @@ from app.models.investigation_job import (
     InvestigationStartResponse,
     InvestigationStatusResponse,
 )
+from app.services.audit_service import audit_service
 from app.services.investigation_job_service import InvestigationJobService
 
 router = APIRouter(tags=["investigation"])
@@ -30,6 +32,20 @@ async def start_investigation(
         user_id=str(current_user.id),
     )
     background_tasks.add_task(job_service.run_investigation, investigation_id, request)
+    await audit_service.record(
+        actor_user_id=str(current_user.id),
+        actor_email=current_user.email,
+        action="investigation.started",
+        resource_type="investigation",
+        resource_id=investigation_id,
+        metadata={
+            "agent_type": request.agent_type,
+            "cluster_id": request.cluster_id,
+            "account_id": request.account_id,
+            "region": request.region,
+            "include_ai": request.include_ai,
+        },
+    )
     return InvestigationStartResponse(
         investigation_id=investigation_id,
         status="started",
@@ -51,6 +67,10 @@ async def list_investigations(
             created_at=datetime.fromisoformat(record["created_at"].replace("Z", "+00:00")),
             root_cause=record.get("root_cause"),
             confidence=record.get("confidence"),
+            llm_input_tokens=int(record.get("llm_input_tokens") or 0),
+            llm_output_tokens=int(record.get("llm_output_tokens") or 0),
+            llm_estimated_cost_usd=record.get("llm_estimated_cost_usd"),
+            llm_call_count=int(record.get("llm_call_count") or 0),
         )
         for record in records
     ]
@@ -98,6 +118,18 @@ async def get_investigation_result(
         )
 
     agent_type = record.get("agent_type") or "kubernetes"
+    llm_usage = None
+    raw_result = record.get("result")
+    if isinstance(raw_result, dict):
+        llm_usage = raw_result.get("llm_usage")
+    elif record.get("result_json"):
+        try:
+            parsed_json = json.loads(record["result_json"])
+            if isinstance(parsed_json, dict):
+                llm_usage = parsed_json.get("llm_usage")
+        except (TypeError, ValueError, json.JSONDecodeError):
+            llm_usage = None
+
     if agent_type == "aws":
         aws_result = InvestigationJobService.parse_aws_result(record)
         diagnosis = aws_result.diagnosis if aws_result else None
@@ -107,6 +139,7 @@ async def get_investigation_result(
             agent_type=agent_type,
             aws_result=aws_result,
             diagnosis=diagnosis,
+            llm_usage=llm_usage,
             error=sanitize_error_message(record["error"]) if record.get("error") else None,
         )
 
@@ -119,6 +152,7 @@ async def get_investigation_result(
             agent_type=agent_type,
             cloud_cost_result=cloud_cost_result,
             diagnosis=diagnosis,
+            llm_usage=llm_usage,
             error=sanitize_error_message(record["error"]) if record.get("error") else None,
         )
 
@@ -131,5 +165,47 @@ async def get_investigation_result(
         agent_type=agent_type,
         result=parsed,
         diagnosis=diagnosis,
+        llm_usage=llm_usage,
         error=sanitize_error_message(record["error"]) if record.get("error") else None,
+    )
+
+
+@router.post(
+    "/investigations/{investigation_id}/rerun",
+    response_model=InvestigationStartResponse,
+)
+async def rerun_investigation(
+    investigation_id: str,
+    background_tasks: BackgroundTasks,
+    current_user: UserResponse = Depends(get_current_user),
+) -> InvestigationStartResponse:
+    request = await job_service.get_request_for_rerun(investigation_id)
+    if not request:
+        raise HTTPException(
+            status_code=404,
+            detail="Investigation not found or original parameters are unavailable for re-run.",
+        )
+
+    new_id = await job_service.start_investigation(
+        request,
+        user_id=str(current_user.id),
+    )
+    background_tasks.add_task(job_service.run_investigation, new_id, request)
+    await audit_service.record(
+        actor_user_id=str(current_user.id),
+        actor_email=current_user.email,
+        action="investigation.rerun",
+        resource_type="investigation",
+        resource_id=new_id,
+        metadata={
+            "source_investigation_id": investigation_id,
+            "agent_type": request.agent_type,
+            "cluster_id": request.cluster_id,
+            "account_id": request.account_id,
+            "region": request.region,
+        },
+    )
+    return InvestigationStartResponse(
+        investigation_id=new_id,
+        status="started",
     )

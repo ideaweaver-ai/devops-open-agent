@@ -6,12 +6,14 @@ from fastapi.responses import JSONResponse
 from loguru import logger
 
 from app.api.v1 import auth as auth_v1
+from app.api.v1 import audit as audit_v1
 from app.api.v1 import clusters as clusters_v1
 from app.api.v1 import diagnose as diagnose_v1
 from app.api.v1 import health as health_v1
 from app.api.v1 import integrations as integrations_v1
 from app.api.v1 import investigations as investigations_v1
 from app.api.v1 import kubernetes_schedules as kubernetes_schedules_v1
+from app.api.v1 import llm_usage as llm_usage_v1
 from app.api.v1 import system as system_v1
 from app.api.v1 import topology as topology_v1
 from app.core.aws_env import sanitize_aws_environment
@@ -28,7 +30,7 @@ from app.modules.pr_reviewer.api.routes import router as pr_reviewer_v1
 from app.modules.security.api.routes import router as security_v1
 from app.services.investigation_job_service import InvestigationJobService
 from app.services.schedule_runner import schedule_runner
-from app.storage.factory import get_pr_review_store
+from app.storage.factory import get_audit_store, get_llm_usage_store, get_pr_review_store
 
 
 @asynccontextmanager
@@ -40,6 +42,8 @@ async def lifespan(app: FastAPI):
     await job_service.initialize()
     pr_review_store = get_pr_review_store()
     await pr_review_store.initialize()
+    await get_llm_usage_store().initialize()
+    await get_audit_store().initialize()
     await init_auth_db()
     await seed_default_admin(settings)
     app.state.investigation_job_service = job_service
@@ -96,6 +100,8 @@ def create_app() -> FastAPI:
     app.include_router(system_v1.router, prefix="/api/v1")
     app.include_router(clusters_v1.router, prefix="/api/v1")
     app.include_router(investigations_v1.router, prefix="/api/v1")
+    app.include_router(llm_usage_v1.router, prefix="/api/v1")
+    app.include_router(audit_v1.router, prefix="/api/v1")
     app.include_router(topology_v1.router, prefix="/api/v1")
     app.include_router(diagnose_v1.router, prefix="/api/v1")
     app.include_router(aws_v1, prefix="/api/v1")

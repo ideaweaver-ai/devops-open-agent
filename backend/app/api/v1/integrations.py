@@ -53,16 +53,22 @@ from app.notifications.teams_notification_service import teams_notification_serv
 from app.services.mcp_settings_service import McpSettingsService
 from app.services.mcp_ask_service import mcp_ask_service
 from app.services.mcp_access_service import McpAccessService
+from app.services.grafana_settings_service import GrafanaSettingsService
 from app.services.pagerduty_settings_service import PagerDutySettingsService
+from app.services.prometheus_settings_service import PrometheusSettingsService
 from app.services.qdrant_settings_service import QdrantSettingsService
 from app.services.rag_service import rag_service
 from app.services.slack_settings_service import SlackSettingsService
-from app.services.teams_settings_service import TeamsSettingsService
+from app.services.splunk_settings_service import SplunkSettingsService
+from app.services.audit_service import audit_service
 from app.services.aws_settings_service import AwsSettingsService
-from app.services.grafana_settings_service import GrafanaSettingsService
-from app.services.prometheus_settings_service import PrometheusSettingsService
+from app.services.teams_settings_service import TeamsSettingsService
 from app.observability.grafana import GrafanaClient, GrafanaError
 from app.observability.prometheus import PrometheusClient, PrometheusError
+from app.observability.splunk import SplunkClient, SplunkError
+from app.modules.aws.client import AwsClientFactory
+from app.modules.aws.errors import AwsApiError, AwsCredentialsError
+from app.core.config import get_settings
 from app.models.prometheus_integration import (
     PrometheusIntegrationResponse,
     PrometheusIntegrationSettings,
@@ -73,9 +79,11 @@ from app.models.grafana_integration import (
     GrafanaIntegrationSettings,
     GrafanaTestResponse,
 )
-from app.modules.aws.client import AwsClientFactory
-from app.modules.aws.errors import AwsApiError, AwsCredentialsError
-from app.core.config import get_settings
+from app.models.splunk_integration import (
+    SplunkIntegrationResponse,
+    SplunkIntegrationSettings,
+    SplunkTestResponse,
+)
 from app.models.aws_integration import (
     AwsIntegrationResponse,
     AwsIntegrationSettings,
@@ -87,12 +95,57 @@ router = APIRouter(tags=["integrations"])
 slack_settings_service = SlackSettingsService()
 pagerduty_settings_service = PagerDutySettingsService()
 teams_settings_service = TeamsSettingsService()
-aws_settings_service = AwsSettingsService()
-prometheus_settings_service = PrometheusSettingsService()
-grafana_settings_service = GrafanaSettingsService()
 mcp_settings_service = McpSettingsService()
 mcp_access_service = McpAccessService()
 qdrant_settings_service = QdrantSettingsService()
+prometheus_settings_service = PrometheusSettingsService()
+grafana_settings_service = GrafanaSettingsService()
+splunk_settings_service = SplunkSettingsService()
+aws_settings_service = AwsSettingsService()
+
+
+async def _audit_integration_update(
+    current_user: UserResponse,
+    integration: str,
+    payload: object,
+) -> None:
+    metadata: dict = {"integration": integration}
+    if hasattr(payload, "model_dump"):
+        dumped = payload.model_dump(mode="json", exclude_none=True)  # type: ignore[union-attr]
+        for key in (
+            "enabled",
+            "delivery_method",
+            "channel",
+            "notify_kubernetes",
+            "notify_aws",
+            "notify_cloud_cost",
+            "notify_performance",
+            "notify_security",
+            "use_kubernetes",
+            "use_aws",
+            "use_performance",
+            "use_security",
+            "url",
+            "collection_name",
+            "verify_tls",
+            "notification_cooldown_minutes",
+        ):
+            if key in dumped:
+                metadata[key] = dumped[key]
+        if dumped.get("webhook_url"):
+            metadata["webhook_url_set"] = True
+        if dumped.get("routing_key"):
+            metadata["routing_key_set"] = True
+        if dumped.get("api_token") or dumped.get("api_key") or dumped.get("password"):
+            metadata["credentials_set"] = True
+    await audit_service.record(
+        actor_user_id=str(current_user.id),
+        actor_email=current_user.email,
+        action="integration.updated",
+        resource_type="integration",
+        resource_id=integration,
+        metadata=metadata,
+    )
 
 
 @router.get("/integrations/slack", response_model=SlackIntegrationResponse)
@@ -135,7 +188,9 @@ async def update_slack_integration(
                     ),
                 )
 
-    return await slack_settings_service.upsert_settings(session, current_user.id, payload)
+    result = await slack_settings_service.upsert_settings(session, current_user.id, payload)
+    await _audit_integration_update(current_user, "slack", payload)
+    return result
 
 
 @router.post("/integrations/slack/test", response_model=SlackTestResponse)
@@ -176,7 +231,9 @@ async def update_teams_integration(
                     detail="Teams webhook URL is required when notifications are enabled.",
                 )
 
-    return await teams_settings_service.upsert_settings(session, current_user.id, payload)
+    result = await teams_settings_service.upsert_settings(session, current_user.id, payload)
+    await _audit_integration_update(current_user, "teams", payload)
+    return result
 
 
 @router.post("/integrations/teams/test", response_model=TeamsTestResponse)
@@ -217,7 +274,9 @@ async def update_pagerduty_integration(
                     detail="PagerDuty routing key is required when notifications are enabled.",
                 )
 
-    return await pagerduty_settings_service.upsert_settings(session, current_user.id, payload)
+    result = await pagerduty_settings_service.upsert_settings(session, current_user.id, payload)
+    await _audit_integration_update(current_user, "pagerduty", payload)
+    return result
 
 
 @router.post("/integrations/pagerduty/test", response_model=PagerDutyTestResponse)
@@ -256,7 +315,9 @@ async def update_qdrant_integration(
                 status_code=400,
                 detail="Qdrant URL is required when the integration is enabled.",
             )
-    return await qdrant_settings_service.upsert_settings(session, current_user.id, payload)
+    result = await qdrant_settings_service.upsert_settings(session, current_user.id, payload)
+    await _audit_integration_update(current_user, "qdrant", payload)
+    return result
 
 
 @router.post("/integrations/qdrant/test", response_model=QdrantTestResponse)
@@ -311,9 +372,11 @@ async def update_mcp_integration(
                 detail="MCP server URL is required when the integration is enabled.",
             )
     try:
-        return await mcp_settings_service.upsert_settings(session, current_user.id, payload)
+        result = await mcp_settings_service.upsert_settings(session, current_user.id, payload)
     except McpUrlPolicyError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    await _audit_integration_update(current_user, "mcp", payload)
+    return result
 
 
 @router.post("/integrations/mcp/test", response_model=McpTestResponse)
@@ -481,7 +544,9 @@ async def update_prometheus_integration(
                 status_code=400,
                 detail="Prometheus URL is required when the integration is enabled.",
             )
-    return await prometheus_settings_service.upsert_settings(session, current_user.id, payload)
+    result = await prometheus_settings_service.upsert_settings(session, current_user.id, payload)
+    await _audit_integration_update(current_user, "prometheus", payload)
+    return result
 
 
 @router.post("/integrations/prometheus/test", response_model=PrometheusTestResponse)
@@ -534,7 +599,9 @@ async def update_grafana_integration(
                 status_code=400,
                 detail="Grafana URL is required when the integration is enabled.",
             )
-    return await grafana_settings_service.upsert_settings(session, current_user.id, payload)
+    result = await grafana_settings_service.upsert_settings(session, current_user.id, payload)
+    await _audit_integration_update(current_user, "grafana", payload)
+    return result
 
 
 @router.post("/integrations/grafana/test", response_model=GrafanaTestResponse)
@@ -566,6 +633,61 @@ async def test_grafana_integration(
     )
 
 
+@router.get("/integrations/splunk", response_model=SplunkIntegrationResponse)
+async def get_splunk_integration(
+    current_user: UserResponse = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_session),
+) -> SplunkIntegrationResponse:
+    return await splunk_settings_service.get_settings(session, current_user.id)
+
+
+@router.put("/integrations/splunk", response_model=SplunkIntegrationResponse)
+async def update_splunk_integration(
+    payload: SplunkIntegrationSettings,
+    current_user: UserResponse = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_session),
+) -> SplunkIntegrationResponse:
+    if payload.enabled:
+        existing = await splunk_settings_service.get_settings(session, current_user.id)
+        has_url = bool(payload.url.strip())
+        if not has_url and not existing.url.strip() and not existing.instance_url_configured:
+            raise HTTPException(
+                status_code=400,
+                detail="Splunk URL is required when the integration is enabled.",
+            )
+    result = await splunk_settings_service.upsert_settings(session, current_user.id, payload)
+    await _audit_integration_update(current_user, "splunk", payload)
+    return result
+
+
+@router.post("/integrations/splunk/test", response_model=SplunkTestResponse)
+async def test_splunk_integration(
+    current_user: UserResponse = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_session),
+) -> SplunkTestResponse:
+    connection = await splunk_settings_service.resolve_connection(
+        session,
+        current_user.id,
+        require_enabled=False,
+        require_kubernetes=False,
+    )
+    if connection is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Configure a Splunk URL before testing the connection.",
+        )
+    try:
+        result = await SplunkClient(connection).test_connection()
+    except SplunkError as exc:
+        logger.warning("Splunk test connection failed | error={}", exc)
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return SplunkTestResponse(
+        status="ok",
+        message="Connected to Splunk successfully.",
+        server_name=result.get("server_name"),
+    )
+
+
 @router.get("/integrations/aws", response_model=AwsIntegrationResponse)
 async def get_aws_integration(
     current_user: UserResponse = Depends(get_current_user),
@@ -586,9 +708,11 @@ async def update_aws_integration(
             detail="Add at least one AWS account with a role ARN when enabling multi-account.",
         )
     try:
-        return await aws_settings_service.upsert_settings(session, current_user.id, payload)
+        result = await aws_settings_service.upsert_settings(session, current_user.id, payload)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    await _audit_integration_update(current_user, "aws", payload)
+    return result
 
 
 @router.post("/integrations/aws/test", response_model=AwsTestResponse)
