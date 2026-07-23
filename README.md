@@ -7,10 +7,10 @@
 **DevOps Open Agent** is an open-source, self-hostable, AI-powered DevOps troubleshooting platform. It helps DevOps engineers, SREs, and platform teams investigate infrastructure issues, optimize cloud costs, review pull requests, debug performance, and scan for security vulnerabilities with DevOps-focused AI guidance — reactively on demand or **proactively on a schedule** — then deliver recommendations to **Slack**, **Microsoft Teams**, and **PagerDuty** without alert fatigue.
 
 <p align="center">
-  <img src="img/devops-open-agent-v2-hero.png" alt="DevOps Open Agent v2 — Operations Hub with 6 agents, Kubernetes investigation, RAG, and LLM-as-a-Judge" width="100%" />
+  <img src="img/devops-open-agent-v2-hero.png" alt="DevOps Open Agent v2 — Operations Hub with agents, Usage, Audit, Integrations, and Kubernetes Investigate" width="100%" />
 </p>
 
-*DevOps Open Agent v2 — Operations Hub with 6 agents, integrations, and AI-powered investigations.*
+*DevOps Open Agent v2 — Operations Hub with agents, Usage / Audit / Integrations, and AI-powered Kubernetes investigations.*
 
 ## Modules
 
@@ -941,10 +941,10 @@ Screenshots from the platform across the agent modules.
 
 ### 1. DevOps Open Agent
 
-Redesigned **Operations Hub** UI with sidebar navigation across agents, integrations, and system status. Select a cluster, optionally include past investigations via **Qdrant RAG**, and start a Kubernetes investigation.
+Redesigned **Operations Hub** UI with sidebar navigation across agents, **Usage**, **Audit**, integrations, and system status. Select a cluster, optionally include past investigations via **Qdrant RAG** or enable **LLM-as-a-Judge**, and start a Kubernetes investigation.
 
 <p align="center">
-  <img src="img/product-tour/01-devops-open-agent.png" alt="DevOps Open Agent — Operations Hub with sidebar navigation and Kubernetes investigation" width="100%" />
+  <img src="img/product-tour/01-devops-open-agent.png" alt="DevOps Open Agent — Operations Hub home with Kubernetes Investigate, Usage, Audit, and Integrations" width="100%" />
 </p>
 
 ### 2. Kubernetes Investigation
