@@ -224,6 +224,24 @@ curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stabl
 All agent modules (Kubernetes, AWS, Cloud Cost, PR Reviewer, Performance Debugging, Security Scanning) use a **shared LLM layer**.  
 Configure one provider in `backend/.env` — every investigation, diagnosis, and PR review uses it. Kubernetes investigations can optionally use a **separate provider/model for LLM-as-a-Judge** verification (see [LLM-as-a-Judge](#llm-as-a-judge-ai-verification)).
 
+### LLM Usage & Cost
+
+DevOps Open Agent meters token usage across the shared LLM layer and shows estimated spend in the UI.
+
+| Surface | What you get |
+|---------|----------------|
+| **Usage** (`/usage`) | Spend and tokens by day, agent, provider, and call kind; date-range filters |
+| **Investigation detail / history** | Per-run token totals and estimated USD |
+| **Daily budget** | Per-user USD threshold on the Usage page; Slack/Teams alert once per UTC day when today’s **total** estimated spend crosses it |
+| **Pricing** (`/usage/pricing`) | Editable rates (`input_per_1m_usd` / `output_per_1m_usd`) used for estimates |
+
+**Notes**
+
+- Estimates are approximate (not live invoice sync). **Ollama is always $0** but still records tokens.
+- Unknown models record tokens with no estimated USD until you add them under Usage → Pricing.
+- Runtime pricing is stored on the data volume at `data/pricing_table.json` (seeded from `backend/app/ai/pricing_table.json`). Editing either path works; UI edits survive container restarts when the volume is mounted.
+- Budget alerts require Slack and/or Teams to be enabled under Integrations. Alerts use today’s UTC spend across **all** providers, not per-model.
+
 ![LLM provider architecture — DevOps Open Agent to Ollama, OpenAI, Anthropic, OpenRouter, and Google Gemini](img/llm-provider-diagram.png?v=gemini)
 
 | Provider | `LLM_PROVIDER` | Configure in `backend/.env` |

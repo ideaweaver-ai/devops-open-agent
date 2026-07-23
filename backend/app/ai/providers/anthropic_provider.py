@@ -11,6 +11,7 @@ from app.ai.providers.exceptions import (
     LLMRateLimitError,
     LLMTimeoutError,
 )
+from app.ai.usage import UsageTracker
 
 
 class AnthropicProvider(BaseLLMProvider):
@@ -78,6 +79,13 @@ class AnthropicProvider(BaseLLMProvider):
             )
 
         data = response.json()
+        usage = data.get("usage") or {}
+        UsageTracker.record(
+            provider="anthropic",
+            model=self.model,
+            input_tokens=int(usage.get("input_tokens") or 0),
+            output_tokens=int(usage.get("output_tokens") or 0),
+        )
         try:
             content_blocks = data["content"]
             text_parts = [

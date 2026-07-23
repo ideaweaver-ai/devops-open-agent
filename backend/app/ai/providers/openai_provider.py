@@ -11,6 +11,7 @@ from app.ai.providers.exceptions import (
     LLMRateLimitError,
     LLMTimeoutError,
 )
+from app.ai.usage import UsageTracker
 
 
 class OpenAIProvider(BaseLLMProvider):
@@ -64,6 +65,14 @@ class OpenAIProvider(BaseLLMProvider):
             raise LLMProviderError(f"OpenAI API error ({response.status_code}): {response.text}")
 
         data = response.json()
+        usage = data.get("usage") or {}
+        UsageTracker.record(
+            provider="openai",
+            model=self.model,
+            input_tokens=int(usage.get("prompt_tokens") or 0),
+            output_tokens=int(usage.get("completion_tokens") or 0),
+            total_tokens=int(usage.get("total_tokens") or 0),
+        )
         try:
             return data["choices"][0]["message"]["content"]
         except (KeyError, IndexError, TypeError) as exc:

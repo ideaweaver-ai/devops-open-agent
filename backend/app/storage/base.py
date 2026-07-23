@@ -20,6 +20,7 @@ class BaseInvestigationStore(ABC):
         include_ai: bool,
         agent_type: str = "kubernetes",
         user_id: str | None = None,
+        request_payload: dict[str, Any] | None = None,
     ) -> None:
         raise NotImplementedError
 
@@ -55,6 +56,17 @@ class BaseInvestigationStore(ABC):
         result: dict[str, Any] | None = None,
     ) -> None:
         raise NotImplementedError
+
+    async def fail_orphaned_running(
+        self,
+        *,
+        error: str = (
+            "Investigation interrupted by server restart. "
+            "Please re-run the investigation."
+        ),
+    ) -> int:
+        """Mark in-progress jobs as failed after a process restart. Default: no-op."""
+        return 0
 
     @abstractmethod
     async def get_status(self, investigation_id: str) -> dict[str, Any] | None:

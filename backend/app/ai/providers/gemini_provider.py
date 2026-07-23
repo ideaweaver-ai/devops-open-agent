@@ -13,6 +13,7 @@ from app.ai.providers.exceptions import (
     LLMRateLimitError,
     LLMTimeoutError,
 )
+from app.ai.usage import UsageTracker
 
 
 class GeminiProvider(BaseLLMProvider):
@@ -73,6 +74,14 @@ class GeminiProvider(BaseLLMProvider):
             )
 
         data = response.json()
+        usage = data.get("usageMetadata") or {}
+        UsageTracker.record(
+            provider="gemini",
+            model=self.model,
+            input_tokens=int(usage.get("promptTokenCount") or 0),
+            output_tokens=int(usage.get("candidatesTokenCount") or 0),
+            total_tokens=int(usage.get("totalTokenCount") or 0),
+        )
         try:
             parts = data["candidates"][0]["content"]["parts"]
             text_parts = [part.get("text", "") for part in parts if part.get("text")]

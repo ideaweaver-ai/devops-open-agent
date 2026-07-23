@@ -1,7 +1,12 @@
-import { apiClient, setAuthToken } from "@/services/api";
-import type { AuthTokenResponse, LoginRequest, SignUpRequest, AuthUser } from "@/types/auth";
+import { apiClient, setAuthToken, AUTH_TOKEN_STORAGE_KEY } from "@/services/api";
+import type {
+  AuthTokenResponse,
+  LoginRequest,
+  SignUpRequest,
+  AuthUser,
+} from "@/types/auth";
 
-export const AUTH_TOKEN_KEY = "kda_auth_token";
+export const AUTH_TOKEN_KEY = AUTH_TOKEN_STORAGE_KEY;
 
 export const authApi = {
   async signUp(request: SignUpRequest): Promise<AuthTokenResponse> {
@@ -16,6 +21,14 @@ export const authApi = {
 
   async getMe(): Promise<AuthUser> {
     const response = await apiClient.get<AuthUser>("/api/v1/auth/me");
+    return response.data;
+  },
+
+  async changePassword(request: {
+    current_password: string;
+    new_password: string;
+  }): Promise<AuthUser> {
+    const response = await apiClient.post<AuthUser>("/api/v1/auth/change-password", request);
     return response.data;
   },
 };

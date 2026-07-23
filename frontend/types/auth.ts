@@ -2,6 +2,8 @@ export interface AuthUser {
   id: string;
   email: string;
   created_at: string;
+  must_change_password?: boolean;
+  llm_daily_budget_usd?: number | null;
 }
 
 export interface AuthTokenResponse {
@@ -18,4 +20,9 @@ export interface LoginRequest {
 export interface SignUpRequest {
   email: string;
   password: string;
+}
+
+export interface ChangePasswordRequest {
+  current_password: string;
+  new_password: string;
 }

@@ -18,6 +18,7 @@ from app.ai.providers.exceptions import (
     LLMRateLimitError,
     LLMTimeoutError,
 )
+from app.ai.usage import UsageTracker
 
 
 class BedrockProvider(BaseLLMProvider):
@@ -115,6 +116,14 @@ class BedrockProvider(BaseLLMProvider):
         except Exception as exc:  # noqa: BLE001
             raise LLMProviderError(f"Bedrock request failed: {exc}") from exc
 
+        usage = response.get("usage") or {}
+        UsageTracker.record(
+            provider="bedrock",
+            model=self.model,
+            input_tokens=int(usage.get("inputTokens") or 0),
+            output_tokens=int(usage.get("outputTokens") or 0),
+            total_tokens=int(usage.get("totalTokens") or 0),
+        )
         return self._extract_text(response)
 
     def _converse(self, kwargs: dict[str, Any]) -> dict[str, Any]:

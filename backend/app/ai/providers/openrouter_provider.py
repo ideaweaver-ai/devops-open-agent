@@ -11,6 +11,7 @@ from app.ai.providers.exceptions import (
     LLMRateLimitError,
     LLMTimeoutError,
 )
+from app.ai.usage import UsageTracker
 
 
 class OpenRouterProvider(BaseLLMProvider):
@@ -68,6 +69,21 @@ class OpenRouterProvider(BaseLLMProvider):
             )
 
         data = response.json()
+        usage = data.get("usage") or {}
+        estimated = None
+        if usage.get("cost") is not None:
+            try:
+                estimated = float(usage.get("cost"))
+            except (TypeError, ValueError):
+                estimated = None
+        UsageTracker.record(
+            provider="openrouter",
+            model=self.model,
+            input_tokens=int(usage.get("prompt_tokens") or 0),
+            output_tokens=int(usage.get("completion_tokens") or 0),
+            total_tokens=int(usage.get("total_tokens") or 0),
+            estimated_usd=estimated,
+        )
         try:
             return data["choices"][0]["message"]["content"]
         except (KeyError, IndexError, TypeError) as exc:

@@ -62,6 +62,18 @@ class SQLiteInvestigationStore(BaseInvestigationStore):
         if "user_id" not in columns:
             connection.execute("ALTER TABLE investigations ADD COLUMN user_id TEXT")
             connection.commit()
+        for column, ddl in (
+            ("llm_input_tokens", "INTEGER NOT NULL DEFAULT 0"),
+            ("llm_output_tokens", "INTEGER NOT NULL DEFAULT 0"),
+            ("llm_estimated_cost_usd", "REAL"),
+            ("llm_call_count", "INTEGER NOT NULL DEFAULT 0"),
+            ("request_json", "TEXT"),
+        ):
+            if column not in columns:
+                connection.execute(
+                    f"ALTER TABLE investigations ADD COLUMN {column} {ddl}"
+                )
+                connection.commit()
 
     async def create(
         self,
@@ -70,6 +82,7 @@ class SQLiteInvestigationStore(BaseInvestigationStore):
         include_ai: bool,
         agent_type: str = "kubernetes",
         user_id: str | None = None,
+        request_payload: dict[str, Any] | None = None,
     ) -> None:
         await asyncio.to_thread(
             self._create_sync,
@@ -78,6 +91,7 @@ class SQLiteInvestigationStore(BaseInvestigationStore):
             include_ai,
             agent_type,
             user_id,
+            request_payload,
         )
 
     def _create_sync(
@@ -87,6 +101,7 @@ class SQLiteInvestigationStore(BaseInvestigationStore):
         include_ai: bool,
         agent_type: str = "kubernetes",
         user_id: str | None = None,
+        request_payload: dict[str, Any] | None = None,
     ) -> None:
         now = self.utc_now()
         with self._connect() as connection:
@@ -94,8 +109,8 @@ class SQLiteInvestigationStore(BaseInvestigationStore):
                 """
                 INSERT INTO investigations (
                     id, cluster_id, agent_type, include_ai, status, current_step,
-                    progress_percentage, user_id, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    progress_percentage, user_id, request_json, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     investigation_id,
@@ -106,6 +121,7 @@ class SQLiteInvestigationStore(BaseInvestigationStore):
                     "Cluster Discovery",
                     0,
                     user_id,
+                    json.dumps(request_payload) if request_payload is not None else None,
                     now,
                     now,
                 ),
@@ -178,12 +194,17 @@ class SQLiteInvestigationStore(BaseInvestigationStore):
         root_cause: str | None,
         confidence: int | None,
     ) -> None:
+        usage = result.get("llm_usage") if isinstance(result, dict) else None
+        usage = usage if isinstance(usage, dict) else {}
         with self._connect() as connection:
             connection.execute(
                 """
                 UPDATE investigations
                 SET status = ?, current_step = ?, progress_percentage = ?,
-                    root_cause = ?, confidence = ?, result_json = ?, error = NULL, updated_at = ?
+                    root_cause = ?, confidence = ?, result_json = ?, error = NULL,
+                    llm_input_tokens = ?, llm_output_tokens = ?,
+                    llm_estimated_cost_usd = ?, llm_call_count = ?,
+                    updated_at = ?
                 WHERE id = ?
                 """,
                 (
@@ -193,6 +214,10 @@ class SQLiteInvestigationStore(BaseInvestigationStore):
                     root_cause,
                     confidence,
                     json.dumps(result),
+                    int(usage.get("input_tokens") or 0),
+                    int(usage.get("output_tokens") or 0),
+                    usage.get("estimated_usd"),
+                    int(usage.get("call_count") or 0),
                     self.utc_now(),
                     investigation_id,
                 ),
@@ -231,6 +256,29 @@ class SQLiteInvestigationStore(BaseInvestigationStore):
                 ),
             )
             connection.commit()
+
+    async def fail_orphaned_running(
+        self,
+        *,
+        error: str = (
+            "Investigation interrupted by server restart. "
+            "Please re-run the investigation."
+        ),
+    ) -> int:
+        return await asyncio.to_thread(self._fail_orphaned_running_sync, error)
+
+    def _fail_orphaned_running_sync(self, error: str) -> int:
+        with self._connect() as connection:
+            cursor = connection.execute(
+                """
+                UPDATE investigations
+                SET status = ?, error = ?, progress_percentage = ?, updated_at = ?
+                WHERE status = ?
+                """,
+                ("failed", error, 100, self.utc_now(), "running"),
+            )
+            connection.commit()
+            return int(cursor.rowcount or 0)
 
     async def get_status(self, investigation_id: str) -> dict[str, Any] | None:
         return await asyncio.to_thread(self._get_status_sync, investigation_id)
@@ -275,7 +323,8 @@ class SQLiteInvestigationStore(BaseInvestigationStore):
             if agent_type:
                 rows = connection.execute(
                     """
-                    SELECT id, cluster_id, agent_type, status, created_at, root_cause, confidence
+                    SELECT id, cluster_id, agent_type, status, created_at, root_cause, confidence,
+                           llm_input_tokens, llm_output_tokens, llm_estimated_cost_usd, llm_call_count
                     FROM investigations
                     WHERE agent_type = ?
                     ORDER BY created_at DESC
@@ -286,7 +335,8 @@ class SQLiteInvestigationStore(BaseInvestigationStore):
             else:
                 rows = connection.execute(
                     """
-                    SELECT id, cluster_id, agent_type, status, created_at, root_cause, confidence
+                    SELECT id, cluster_id, agent_type, status, created_at, root_cause, confidence,
+                           llm_input_tokens, llm_output_tokens, llm_estimated_cost_usd, llm_call_count
                     FROM investigations
                     ORDER BY created_at DESC
                     LIMIT ?

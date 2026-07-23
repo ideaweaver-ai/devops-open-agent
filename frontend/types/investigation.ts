@@ -20,6 +20,10 @@ export interface InvestigationHistoryItem {
   created_at: string;
   root_cause: string | null;
   confidence: number | null;
+  llm_input_tokens?: number;
+  llm_output_tokens?: number;
+  llm_estimated_cost_usd?: number | null;
+  llm_call_count?: number;
 }
 
 export interface InvestigationHistoryResponse {
@@ -83,6 +87,7 @@ export interface InvestigationResultResponse {
   aws_result?: import("@/types/aws").AwsInvestigationResponse | null;
   cloud_cost_result?: import("@/types/cloudCost").CloudCostInvestigationResponse | null;
   diagnosis?: DiagnosisResult | null;
+  llm_usage?: import("@/types/llmUsage").LlmUsageSummary | null;
   error?: string | null;
 }
 
@@ -103,6 +108,7 @@ export interface InvestigationPayload {
   deployments: Record<string, unknown>;
   investigation: Record<string, unknown>;
   diagnosis?: DiagnosisResult | null;
+  llm_usage?: import("@/types/llmUsage").LlmUsageSummary | null;
   error?: string | null;
 }
 
@@ -131,6 +137,7 @@ export const INVESTIGATION_STEPS = [
   "Deployment Inspection",
   "Network Inspection",
   "Topology Extraction",
+  "Observability Collection",
   "AI Diagnosis",
   "AI Verification",
 ] as const;

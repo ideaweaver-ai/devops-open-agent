@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { formatUsageTokens, formatUsageUsd } from "@/components/LlmUsageBreakdown";
 import { formatAgentType } from "@/lib/platform";
 import { useInvestigationHistory } from "@/hooks/useInvestigationStatus";
 
@@ -115,6 +116,12 @@ export function InvestigationHistory({
                   Confidence
                 </th>
                 <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                  Tokens
+                </th>
+                <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                  Est. $
+                </th>
+                <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
                   Started
                 </th>
                 <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
@@ -172,6 +179,22 @@ export function InvestigationHistory({
                   <td className="px-4 py-3.5 tabular-nums">
                     {item.confidence != null ? (
                       <span className="font-medium text-slate-200">{item.confidence}%</span>
+                    ) : (
+                      <span className="text-slate-600">—</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3.5 tabular-nums text-slate-300">
+                    {(item.llm_call_count ?? 0) > 0 ? (
+                      formatUsageTokens(
+                        (item.llm_input_tokens ?? 0) + (item.llm_output_tokens ?? 0),
+                      )
+                    ) : (
+                      <span className="text-slate-600">—</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3.5 tabular-nums text-slate-300">
+                    {(item.llm_call_count ?? 0) > 0 ? (
+                      formatUsageUsd(item.llm_estimated_cost_usd)
                     ) : (
                       <span className="text-slate-600">—</span>
                     )}

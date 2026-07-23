@@ -3,7 +3,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, func
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -20,6 +20,9 @@ class User(Base):
     )
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    must_change_password: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    llm_daily_budget_usd: Mapped[float | None] = mapped_column(Float, nullable=True)
+    llm_budget_alert_date: Mapped[str | None] = mapped_column(String(16), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
@@ -220,10 +223,6 @@ class UserQdrantIntegration(Base):
     )
 
 
-
-
-
-
 class UserPrometheusIntegration(Base):
     __tablename__ = "user_prometheus_integrations"
 
@@ -264,6 +263,30 @@ class UserGrafanaIntegration(Base):
         onupdate=func.now(),
         nullable=False,
     )
+
+
+class UserSplunkIntegration(Base):
+    __tablename__ = "user_splunk_integrations"
+
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    url: Mapped[str] = mapped_column(String(512), nullable=False, default="")
+    token: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    username: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    password: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    index: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    use_kubernetes: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
 
 class UserAwsIntegration(Base):
     """Per-user toggle for AWS multi-account (STS AssumeRole) catalog."""
@@ -317,6 +340,7 @@ class UserAwsAccount(Base):
         onupdate=func.now(),
         nullable=False,
     )
+
 
 class InvestigationSchedule(Base):
     __tablename__ = "investigation_schedules"
