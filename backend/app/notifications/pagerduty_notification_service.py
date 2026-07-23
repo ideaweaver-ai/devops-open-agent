@@ -239,9 +239,12 @@ class PagerDutyNotificationService:
         if not base:
             return ""
         if agent_type == "aws":
-            return f"{base}/aws/investigations/{investigation_id}"
+            return f"{base}/investigations/{investigation_id}?from=/aws/investigations"
         if agent_type == "cloud_cost":
-            return f"{base}/cloud-cost/investigations/{investigation_id}"
+            return (
+                f"{base}/investigations/{investigation_id}"
+                f"?from=/cloud-cost/investigations"
+            )
         return f"{base}/investigations/{investigation_id}"
 
     def _pr_review_url(self, review_id: str) -> str:

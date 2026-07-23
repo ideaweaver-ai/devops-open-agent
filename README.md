@@ -242,6 +242,8 @@ DevOps Open Agent meters token usage across the shared LLM layer and shows estim
 - Runtime pricing is stored on the data volume at `data/pricing_table.json` (seeded from `backend/app/ai/pricing_table.json`). Editing either path works; UI edits survive container restarts when the volume is mounted.
 - Budget alerts require Slack and/or Teams to be enabled under Integrations. Alerts use today’s UTC spend across **all** providers, not per-model.
 
+**Audit log:** open **Audit** in the sidebar (`/audit`) to see who started investigations and who changed integration settings.
+
 ![LLM provider architecture — DevOps Open Agent to Ollama, OpenAI, Anthropic, OpenRouter, and Google Gemini](img/llm-provider-diagram.png?v=gemini)
 
 | Provider | `LLM_PROVIDER` | Configure in `backend/.env` |
