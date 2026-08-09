@@ -75,6 +75,29 @@ jobs:
         run: |
           terraform apply -auto-approve -var-file=${{ github.event.inputs.tfvars_file }} -input=false
 
+      - name: Terraform Outputs
+        if: ${{ github.event.inputs.action == 'apply' }}
+        run: |
+          echo "\n=== Terraform Outputs ==="
+          terraform output
+
+      - name: Save bastion private key artifact
+        if: ${{ github.event.inputs.action == 'apply' }}
+        run: |
+          mkdir -p $GITHUB_WORKSPACE/terraform-artifacts
+          if terraform output -raw bastion_private_key_pem > $GITHUB_WORKSPACE/terraform-artifacts/bastion.pem 2>/dev/null; then
+            chmod 600 $GITHUB_WORKSPACE/terraform-artifacts/bastion.pem
+          else
+            echo "bastion_private_key_pem output not available or empty."
+          fi
+
+      - name: Upload Terraform artifacts
+        if: ${{ github.event.inputs.action == 'apply' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-outputs
+          path: $GITHUB_WORKSPACE/terraform-artifacts
+
       - name: Terraform Destroy
         if: ${{ github.event.inputs.action == 'destroy' }}
         run: |
