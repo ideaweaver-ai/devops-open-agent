@@ -61,3 +61,14 @@ docker-compose.override.yml
 *.pem
 *.key
 *.p12
+
+# Terraform local files
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+.terraform.tfstate
+.terraform.tfstate.backup
+
+# Temporary git/rebase backups
+tmp-rebase-backup/

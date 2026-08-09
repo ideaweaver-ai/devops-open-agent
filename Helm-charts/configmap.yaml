@@ -1,0 +1,6 @@
+LogicalID:
+  Type: AWS::ApiGateway::DocumentationVersion
+  Properties:
+    Description: "String"
+    DocumentationVersion: "String" # Required
+    RestApiId: "String" # Required
